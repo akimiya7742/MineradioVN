@@ -7,7 +7,7 @@ dist-*/
 out/
 release/
 releases/
-win-unpacked/
+*-unpacked/
 *.exe
 *.msi
 *.blockmap

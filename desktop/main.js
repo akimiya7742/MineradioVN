@@ -1,3 +1,7 @@
+/*
+ * Modified by akimiya7742 on 29/06/2026
+ * Original work Copyright (C) 2026 XxHuberrr
+*/
 const { app, BrowserWindow, ipcMain, shell, screen, session, globalShortcut, dialog } = require('electron');
 const net = require('net');
 const path = require('path');
@@ -37,6 +41,8 @@ const NETEASE_LOGIN_URL = 'https://music.163.com/#/login';
 const QQ_LOGIN_PARTITION = 'persist:mineradio-qqmusic-login';
 const QQ_LOGIN_URL = 'https://y.qq.com/n/ryqq/profile';
 
+const isWindows = process.platform === 'win32';
+
 const CHROMIUM_PERFORMANCE_SWITCHES = [
   ['autoplay-policy', 'no-user-gesture-required'],
   ['ignore-gpu-blocklist'],
@@ -48,8 +54,9 @@ const CHROMIUM_PERFORMANCE_SWITCHES = [
   ['disable-renderer-backgrounding'],
   ['disable-backgrounding-occluded-windows'],
   ['force_high_performance_gpu'],
-  ['use-angle', 'd3d11'],
+  ['use-angle', isWindows ? 'd3d11' : 'vulkan'], 
 ];
+
 for (const [name, value] of CHROMIUM_PERFORMANCE_SWITCHES) {
   if (value == null) app.commandLine.appendSwitch(name);
   else app.commandLine.appendSwitch(name, value);
