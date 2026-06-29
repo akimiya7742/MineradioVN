@@ -27,7 +27,7 @@ let htmlFullscreenActive = false;
 let windowFullscreenActive = false;
 let mainWindowStateTimer = null;
 const registeredGlobalHotkeys = new Map();
-
+const log = require('electron-log');
 const WINDOWED_ASPECT = 16 / 9;
 const WINDOWED_SCALE = 3 / 4;
 const WINDOWED_MARGIN = 32;
@@ -189,6 +189,16 @@ function scheduleWindowStateSend(win, delay = 80) {
     sendWindowState(win);
   }, delay);
 }
+if (app.isPackaged) {
+  // Keep file logging active but completely disable the console pipe
+  log.transports.console.level = false; 
+
+  // Safely stub native console overrides
+  console.log = () => {};
+  console.error = () => {};
+  console.warn = () => {};
+}
+
 
 function rectsOverlapOnY(a, b) {
   if (!a || !b) return false;
