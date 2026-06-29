@@ -1,48 +1,38 @@
-# Mineradio Project Rules
+<!--
+ * Modified by akimiya7742 on 29/06/2026
+ * Original work Copyright (C) 2026 XxHuberrr
+-->
+# Mineradio Project Rules (AGENTS.md)
 
 ## Project Identity
 
-Mineradio 是 Windows Electron 桌面音乐播放器，核心体验包括搜索、播放、歌单、歌词、3D 歌单架、粒子视觉预设、DIY 视觉控制台和 GitHub 自动更新。
+Mineradio is an immersive Windows Electron desktop music player. Its core user experience includes search, playback, custom playlists, dynamic lyrics, a 3D playlist rack, interactive particle visual presets, a DIY visual control console, and seamless GitHub automated updates.
 
-- 当前可运行程序：`E:\桌面\播放器软件\Mineradio\Mineradio.exe`
-- 当前运行版主目录：`E:\桌面\播放器软件\Mineradio`
-- 当前真实代码/Git 仓库：`E:\桌面\播放器软件\Mineradio\resources\app`
-- GitHub 仓库：`https://github.com/XxHuberrr/Mineradio.git`
-- 当前源码版本：`v1.1.0`
-- 统一备份区：`E:\桌面\播放器软件\工作区备份`
+## Start Every New AI Agent Thread Here
 
-## Start Every New Codex Thread Here
-
-新对话开始处理 Mineradio 前，必须先确认当前目录是：
-
-```powershell
-E:\桌面\播放器软件\Mineradio\resources\app
-```
-
-然后读这些文件：
-
+Thoroughly read and parse the following critical system files:
 - `AGENTS.md`
 - `docs/PROJECT_MEMORY.md`
-- 涉及玻璃 SVG 质感时读取 `docs/GLASS_SVG_TEXTURE.md`
-- 涉及发布时读取 `CHANGELOG.md`、`RELEASE.md`、`package.json`
+- For SVG glass textures, read: `docs/GLASS_SVG_TEXTURE.md`
+- For deployments/releases, read: `CHANGELOG.md`, `RELEASE.md`, and `package.json`
 
 ## Repository Layout
 
 ```text
 Mineradio/resources/app/
 ├─ public/
-│  ├─ index.html        # 主 UI、CSS、歌词、粒子、3D 歌单架、视觉控制台
-│  └─ vendor/           # 本地 vendor 依赖
-├─ desktop/             # Electron main/preload
-├─ build/               # 打包资源和 installer 脚本
-├─ docs/                # 项目记忆、设计偏好、长期约束
-├─ server.js            # 本地 API、音乐源、更新检查、补丁应用
-├─ dj-analyzer.js       # 节奏/音频分析
-├─ package.json         # 版本号、构建命令、electron-builder 配置
-└─ CHANGELOG.md         # 中文更新说明优先写在顶部
+│  ├─ index.html       # Main UI, CSS, lyrics, particles, 3D rack, visual console
+│  └─ vendor/           # Local vendor dependencies
+├─ desktop/             # Electron main/preload scripts
+├─ build/               # Packaging assets and installer build scripts
+├─ docs/                # Project memory, design guidelines, long-term constraints
+├─ server.js            # Local API, music source handlers, update checks, hotfixes
+├─ dj-analyzer.js       # Beat and real-time audio spectrum analysis
+├─ package.json         # Versioning, build commands, and electron-builder configurations
+└─ CHANGELOG.md         # Release changelogs (English/Vietnamese updates prioritized at the top)
 ```
 
-## Commands
+## Developer Commands
 
 ```powershell
 npm start
@@ -51,58 +41,54 @@ npm run build:win:dir
 npm run build:win
 ```
 
-前端主逻辑在 `public/index.html`。这个目录是正在运行的 `Mineradio.exe` 使用的 app 目录，所以改完后重启外层 `E:\桌面\播放器软件\Mineradio\Mineradio.exe` 就能及时检查效果。没有独立 npm test，改动后至少做：
+The frontend core logic resides entirely within `public/index.html`. This workspace directory is actively utilized by the running instance of `Mineradio.exe`. Therefore, any modifications can be evaluated instantly by restarting the outer `E:\桌面\播放器软件\Mineradio\Mineradio.exe` executable. 
 
-注意：运行版 `resources\app\node_modules` 可能只包含运行依赖。如果发布打包时缺少 `electron-builder`，先在 `E:\桌面\播放器软件\Mineradio\resources\app` 执行 `npm install`，再执行 `npm run build:win`。
+*Note:* There is no standalone automated test suite. After making any changes, you must perform at least the following validation steps:
 
 ```powershell
 git diff --check
 node --check server.js
 ```
 
-并用实际 Electron 或浏览器检查关键交互。
+Always manually check key interactions within the Electron instance or the targeted browser environment. If the build environment lacks `electron-builder` when compiling the final installer, execute `npm install` inside `E:\桌面\播放器软件\Mineradio\resources\app` before triggering `npm run build:win`.
 
 ## Release Workflow
 
-发布新版本时：
-
-1. 更新 `package.json` 和 `package-lock.json` 版本号。
-2. 更新 `CHANGELOG.md` 顶部中文说明。
-3. 运行语法/空白检查。
-4. 执行 `npm run build:win`。
-5. 上传 GitHub Release 资产：
+When launching a new release:
+1. Bump the version numbers inside `package.json` and `package-lock.json`.
+2. Add comprehensive release details at the top of `CHANGELOG.md`.
+3. Execute standard syntax and trailing whitespace sanity checks.
+4. Run the production build command: `npm run build:win`.
+5. Upload the generated assets to GitHub Releases:
    - `dist/Mineradio-x.y.z-Setup.exe`
    - `dist/Mineradio-x.y.z-Setup.exe.blockmap`
    - `dist/latest.yml`
-   - 需要的 `Mineradio-旧版本-x.y.z.json` 轻量补丁
-6. 0.9 系列补丁跳过；1.0.x 系列可按需生成跨小版本补丁。
+   - Any required incremental lightweight JSON patches (`Mineradio-legacy-x.y.z.json`).
+6. Skip generating patches for the legacy 0.9.x series; generate cross-minor-version patches for 1.0.x/1.1.x series strictly on an as-needed basis.
 
-GitHub CLI / `gh auth` / Release 上传需要代理时，优先使用可用本机代理 `127.0.0.1:10808`；不要再走旧代理 `127.0.0.1:26001`，该端口会连接拒绝。临时命令可先清空 `HTTP_PROXY`/`HTTPS_PROXY`，再设为 `http://127.0.0.1:10808`。
+If GitHub CLI (`gh auth` / asset uploads) requires a network proxy, route traffic explicitly through the local proxy endpoint `127.0.0.1:10808`. **Do not** use the obsolete proxy `127.0.0.1:26001` (it will trigger connection refused errors). For temporary shell setups, clear `HTTP_PROXY`/`HTTPS_PROXY` and redefine them to `http://127.0.0.1:10808`.
 
-## User Preferences
+## User Preferences & Dev Vibe
 
-- 交流语言：中文。
-- 用户偏好：少废话，直接做，修完验证，能发布就一起发布。
-- UI 审美：精致、暗色、高级、流畅，拒绝廉价渐变、过度透明、错位、闪烁和卡顿。
-- 视觉质量定义：质感、丝滑度、帧数稳定同时成立；性能优化不能牺牲既有质感。
-- 玻璃质感：当前播放器 SVG 玻璃质感是黄金版本，详见 `docs/GLASS_SVG_TEXTURE.md`。
-- 备份策略：不要删除旧资料；重复和历史内容移动到 `E:\桌面\播放器软件\工作区备份`。
-- 重要：不要再改旧外层源码目录。旧的 `E:\桌面\播放器软件\Mineradio\public` / `desktop` 已经归档；现在只有 `E:\桌面\播放器软件\Mineradio\resources\app\public` / `desktop` 会影响运行版。
+- **Communication Language:** Friendly Vietnamese with tech-savvy/teen slang, using professional computer and tech terminology where appropriate.
+- **Workflow Style:** Cut the fluff. Code directly, patch cleanly, verify after fixing, and bundle releases whenever possible.
+- **UI/UX Aesthetics:** High-end, sleek dark mode, sophisticated glassmorphism, fluid animations. Absolutely **NO** cheap gradients, excessive/unreadable transparency, misaligned layouts, flashing elements, or micro-stutters.
+- **Visual Quality Definition:** Textures, buttery-smooth frame rates, and render stability must coexist harmoniously. Performance tuning must never compromise existing visual fidelity.
+- **Glassmorphism:** The current SVG glass filter layout is the gold standard of this app. Refer strictly to `docs/GLASS_SVG_TEXTURE.md`.
 
 ## Memory Protocol
 
-当用户说“保留”“这个做得很好”“我喜欢”“记住这个”“保存一下”“以后别忘了”或同类表达时：
+Whenever the user states phrases like *"keep this"*, *"this works perfectly"*, *"I love this feature"*, *"remember this configuration"*, or *"don't forget this in future updates"*:
+1. Analyze exactly what the user is validating (e.g., codebase patch, UI/UX feel, interaction workflow, release pipeline, or architectural convention).
+2. Append the verified insights and rules directly into the designated section of `docs/PROJECT_MEMORY.md`.
+3. If the feedback targets fragile visual frameworks (e.g., SVG glass elements, custom particle presets, or the 3D playlist rack), update the corresponding specialized tech documentation simultaneously.
+4. Clearly log the modification date, affected filenames, crucial operational parameters, and precise technical boundaries to prevent regressions.
+5. If changes are bundled with active code commits, push the memory documentation together; otherwise, single documentation maintenance commits are perfectly acceptable.
 
-1. 判断用户认可的是代码、视觉效果、交互流程、发布流程还是工作习惯。
-2. 将结论追加到 `docs/PROJECT_MEMORY.md` 的对应区块。
-3. 如果是玻璃 SVG、粒子预设、3D 歌单架等脆弱视觉实现，同时更新对应专项文档。
-4. 记录日期、涉及文件、关键参数、不要再改坏的边界。
-5. 如果本轮有代码提交，把记忆文档一起提交；如果只是记忆整理，单独提交也可以。
+## Guardrails & Constraints
 
-## Guardrails
-
-- 不要随意重写 `public/index.html` 的大块视觉系统；先定位已有函数和状态。
-- 不要动电影视觉系统，除非用户明确点名。
-- 不要恢复旧的侧边栏闪烁、控制台播放暂停失效、3D 歌单架强制切回星河等问题。
-- 不要把搜索结果、左侧歌单、3D 歌单架的性能优化做成一次性渲染全部内容。
-- 不要把用户认可的玻璃质感改成普通毛玻璃或廉价透明面板。
+- **Do NOT** blindly refactor or overwrite large modules of the visual engine inside `public/index.html`. Always locate and interface with existing helper functions and global states first.
+- **Do NOT** modify or interfere with the cinematic beat-camera engine unless explicitly requested by the user.
+- **Do NOT** reintroduce patched legacy bugs (e.g., sidebar layout flickering, play/pause input dropping inside the debug console, or the 3D rack resetting abruptly back to the default galaxy environment).
+- **Do NOT** implement performance optimizations for search results, sidebar playlists, or the 3D rack that rely on rendering entire data collections all at once. Use virtual scrolling or batch processing.
+- **Do NOT** downgrade the highly-polished SVG glass textures into basic CSS backdrops or cheap transparent panels.
