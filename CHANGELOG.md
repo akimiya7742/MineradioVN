@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.2
+- Use Youtube as a default provider, remove ALL Chinese-only provider
+- Support Linux app
+
 ## v1.1.1
 
 - P0 installer safety fix: installation now defaults to the first available non-C drive from `D:\Mineradio` through `Z:\Mineradio`; it falls back to `C:\Mineradio` only when no D-Z drive exists.
