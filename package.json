@@ -32,7 +32,10 @@
       "dj-analyzer.js",
       "package.json",
       "!public/index.*.html",
-      "public/index.html"
+      "public/index.html",
+      "public/index.html",
+      "!node_modules/*", 
+      "!src/*"
     ],
     "asar": false,
     "win": {
@@ -62,14 +65,7 @@
       "installerHeader": "build/installerHeader.bmp",
       "include": "build/installer.nsh",
       "artifactName": "Mineradio-${version}-Setup.${ext}"
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "akimiya7742",
-        "repo": "MineradioVN"
-      }
-    ]
+    }
   },
   "mineradio": {
     "update": {
