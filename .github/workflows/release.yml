@@ -73,6 +73,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           body: ${{ steps.get_changelog.outputs.changelog }}
+          tag_name: ${{ github.event.inputs.version || github.ref_name }}
           files: dist-downloads/**/*
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
