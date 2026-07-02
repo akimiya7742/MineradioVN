@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
 
       - name: Install dependencies
         run: npm install
@@ -29,7 +29,6 @@ jobs:
       - name: Get Changelog
         id: get_changelog
         run: |
-          # Nếu chạy thủ công thì lấy theo input, nếu chạy bằng tag thì lấy theo GITHUB_REF
           VERSION=${{ github.event.inputs.version || github.ref_name }}
           VERSION=${VERSION#v}
           echo "Build version: $VERSION"
