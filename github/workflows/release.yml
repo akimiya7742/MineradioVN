@@ -1,0 +1,50 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger khi push tag ví dụ v1.1.2
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      # Bước lấy nội dung Changelog cho phiên bản hiện tại
+      - name: Get Changelog
+        id: get_changelog
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          # Trích xuất nội dung từ version tag đến tiêu đề version tiếp theo
+          sed -n "/^## v$VERSION/,/^## v/p" CHANGELOG.md | sed '$d' > RELEASE_NOTES.md
+          echo "changelog=$(cat RELEASE_NOTES.md)" >> $GITHUB_OUTPUT
+
+      # Build cho Windows và Linux
+      - name: Build Electron App
+        uses: samuelmeuli/action-electron-builder@v1
+        with:
+          # Cần thiết lập GH_TOKEN trong Settings > Secrets
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          build_script_name: build # Tự động chạy npm run build (cần config trong package.json)
+          args: --win --linux
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: RELEASE_NOTES.md
+          files: |
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
