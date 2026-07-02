@@ -7,13 +7,18 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version'
+        description: 'Version (tags)'
         required: true
         default: '1.1.2'
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        # Chạy song song trên cả 2 hệ điều hành
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,11 +28,35 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install dependencies for Linux build
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libx11-dev libxkbfile-dev libsecret-1-dev
-
       - name: Install dependencies
         run: npm install
+
+      # Build tùy theo hệ điều hành (Tránh xung đột lệnh)
+      - name: Build Electron App
+        uses: samuelmeuli/action-electron-builder@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Nếu chạy trên windows build --win, trên ubuntu build --linux
+          args: ${{ matrix.os == 'windows-latest' && '--win' || '--linux' }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact-${{ matrix.os }}
+          path: dist/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-downloads
+
       - name: Get Changelog
         id: get_changelog
         run: |
@@ -40,22 +69,10 @@ jobs:
             echo 'EOF'
           } >> $GITHUB_OUTPUT
 
-      # Build cho Windows và Linux
-      - name: Build Electron App
-        uses: samuelmeuli/action-electron-builder@v1
-        with:
-          # Cần thiết lập GH_TOKEN trong Settings > Secrets
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          build_script_name: action:build # Tự động chạy npm run build (cần config trong package.json)
-          args: --publish never
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          body_path: RELEASE_NOTES.md
-          files: |
-            dist/*.exe
-            dist/*.AppImage
-            dist/*.deb
+          body: ${{ steps.get_changelog.outputs.changelog }}
+          files: dist-downloads/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
