@@ -23,6 +23,9 @@ jobs:
         with:
           node-version: 18
 
+      - name: Install dependencies for Linux build
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libx11-dev libxkbfile-dev libsecret-1-dev
+
       - name: Install dependencies
         run: npm install
 
@@ -42,8 +45,8 @@ jobs:
         with:
           # Cần thiết lập GH_TOKEN trong Settings > Secrets
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          build_script_name: build # Tự động chạy npm run build (cần config trong package.json)
-          args: --win --linux
+          build_script_name: action:build # Tự động chạy npm run build (cần config trong package.json)
+          args: --publish never
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
