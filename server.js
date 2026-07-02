@@ -11,12 +11,14 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const { Innertube } = require("youtubei.js");
+const os = require('os');
 const path = require('path');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+let loggedIn = false;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const MIME = {
 	'.html': 'text/html; charset=utf-8',
@@ -29,6 +31,60 @@ const MIME = {
 	'.svg': 'image/svg+xml',
 };
 let innertube = null;
+const USER_DATA_PATH = process.env.APPDATA || (process.platform == 'darwin' ? path.join(os.homedir(), 'Library', 'Application Support') : path.join(os.homedir(), '.config'));
+const APP_DATA_DIR = path.join(USER_DATA_PATH, 'mineradio');
+const COOKIE_FILE_PATH = path.join(APP_DATA_DIR, 'ytcookie.txt');
+if (!fs.existsSync(APP_DATA_DIR)) fs.mkdirSync(APP_DATA_DIR, { recursive: true });
+/**
+ * Chuyển đổi định dạng Netscape sang Cookie String cho Innertube
+ */
+function parseNetscapeCookies(filePath) {
+    try {
+        if (!fs.existsSync(filePath)) return '';
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const lines = content.split('\n');
+
+        for (const line of lines) {
+            // Bỏ qua comment hoặc dòng trống
+            if (!line.trim() || line.startsWith('#')) continue;
+            
+            const parts = line.split(/\s+/);
+            if (parts.length >= 7) {
+                const domain = parts[0];
+                const cookieName = parts[5];
+                const cookieValue = parts[6];
+
+                // Check đúng domain youtube và đúng tên cookie
+                if (domain.includes('youtube.com') && cookieName === '__Secure-3PSIDTS') {
+                    return `${cookieName}=${cookieValue}`;
+                }
+            }
+        }
+        return ''; // Không tìm thấy thì trả về empty
+    } catch (e) {
+        console.error('[Cookie Parse Error]', e);
+        return '';
+    }
+}
+/**
+ * Khởi tạo Innertube với cookie nếu có sẵn
+ */
+async function initInnertube() {
+    const cookieString = parseNetscapeCookies(COOKIE_FILE_PATH);
+	//console.log(cookieString);
+    if (cookieString) {
+        console.log('[System] Found saved cookie.txt, logging in...');
+        innertube = await Innertube.create({ cookie: cookieString });
+		loggedIn = true;
+    } else {
+        innertube = await Innertube.create({cookie:null});
+    }
+}
+
+// Gọi khởi tạo khi server chạy
+initInnertube().then(() => {
+    console.log("[Auth Status]", loggedIn); // In ra true vì block này chỉ chạy sau khi hàm xong
+});
 // ---------- YouTube Logic (yt-dlp) ----------
 
 /**
@@ -105,7 +161,8 @@ async function handleSearch(keywords, limit = 20) {
 			album: item.album?.name || 'YouTube Video',
 			cover: item.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
 			duration: (item.duration || 0) * 1000,
-			url: `https://www.youtube.com/watch?v=${item.id}`
+			url: `https://www.youtube.com/watch?v=${item.id}`,
+			provider: 'youtube'
 		};
 	});
 }
@@ -113,40 +170,27 @@ async function handleSearch(keywords, limit = 20) {
 /**
  * Get direct Audio Stream URL
  */
-// async function handleGetUrl(id) {
-// 	console.log('[YouTube URL Discovery]', id);
-// 	// const args = `-f "ba/b" -g "https://www.youtube.com/watch?v=${id}"`;
-// 	// const url = await runYtDlp(args);
-
-// 	if (!innertube) innertube = await Innertube.create();
-// 	const info = await innertube.getBasicInfo(id);
-// 	const audio_format = info.chooseFormat({
-// 		type: 'audio',
-// 	});
-// 	if (!audio_format) return null;
-// 	return {	
-// 		url: audio_format.url,
-// 		playable: true,
-// 		provider: 'youtube',
-// 		level: 'standard',
-// 		quality: 'Best Audio'
-// 	};
-// }
 async function handleGetUrl(id) {
-	console.log('[YouTube URL Discovery]', id);
-	// -f "ba" grabs best audio. -g returns only the URL.
-	const args = `-f "ba/b" -g "https://www.youtube.com/watch?v=${id}"`;
-	const url = await runYtDlp(args);
+    console.log('[YouTube URL Discovery]', id);
+    
+    // Kiểm tra xem file cookie có tồn tại không để truyền vào yt-dlp
+    let cookieArg = '';
+    if (fs.existsSync(COOKIE_FILE_PATH)) {
+        cookieArg = `--cookies "${COOKIE_FILE_PATH}"`;
+    }
 
-	if (!url) return { url: null, error: 'COULD_NOT_EXTRACT_URL' };
+    const args = `-f "ba/b" ${cookieArg} -g "https://music.youtube.com/watch?v=${id}"`;
+    const url = await runYtDlp(args);
 
-	return {
-		url: url.trim(),
-		playable: true,
-		provider: 'youtube',
-		level: 'standard',
-		quality: 'Best Audio'
-	};
+    if (!url) return { url: null, error: 'COULD_NOT_EXTRACT_URL' };
+
+    return {
+        url: url.trim(),
+        playable: true,
+        provider: 'youtube',
+        level: 'standard',
+        quality: 'Best Audio'
+    };
 }
 /**
  * Fetch Video Details
@@ -268,7 +312,7 @@ async function searchLrcLib(query) {
 const server = http.createServer(async (req, res) => {
 	const url = new URL(req.url, `http://${req.headers.host}`);
 	const pn = url.pathname;
-
+	console.log(`[Debug] Route called: ${pn}`)
 	// Search API
 	if (pn === '/api/search' || pn === '/api/qq/search') {
 		try {
@@ -375,29 +419,59 @@ const server = http.createServer(async (req, res) => {
 		});
 		return;
 	}
-	if (pn == '/api/login' || pn == '/api/qq/login') {
-		const cookie = url.searchParams.get('cookie');
-		if (cookie) {
-			innertube = await Innertube.create({
-				cookie: cookie
-			});
-			sendJSON(res, { success: true });
-		} else {
-			sendJSON(res, { success: false, error: 'COOKIE_REQUIRED' });
-		}
-		return;
-	}
-	if (pn == '/api/logout') {
-		innertube = await Innertube.create();
-		sendJSON(res, { success: true });
-		return;
-	}
+    if (pn == '/api/login') {
+        // Chúng ta sẽ dùng phương thức POST để nhận dữ liệu file
+        if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', async () => {
+                try {
+                    // Lưu file vào đường dẫn đã định nghĩa
+                    fs.writeFileSync(COOKIE_FILE_PATH, body, 'utf-8');
+                    
+                    // Parse lại để login Innertube
+                    const cookieString = parseNetscapeCookies(COOKIE_FILE_PATH);
+                    innertube = await Innertube.create({ cookie: cookieString });
+                    
+                    loggedIn = true;
+                    sendJSON(res, { success: true });	
+                } catch (err) {
+                    sendJSON(res, { success: false, error: err.message }, 500);
+                }
+            });
+        }
+        return;
+    }
+
+    if (pn == '/api/logout') {
+        if (fs.existsSync(COOKIE_FILE_PATH)) fs.unlinkSync(COOKIE_FILE_PATH);
+		//if (innertube) await innertube.session.signOut();
+        innertube = await Innertube.create({cookie:null});
+        sendJSON(res, { success: true });
+		loggedIn = false;
+        return;
+    }
 	if (pn == '/api/recommend') {
 		const rmd = await getRecommendedTracks();
 		sendJSON(res, {success:true,rmd});
 		return;
 	}
+	if (pn == '/api/login/status') {
+		const actualStatus = innertube && innertube.session && innertube.session.logged_in;
+		sendJSON(res, {
+			success: true, 
+			loggedIn: actualStatus || false,
+		});
+		return;
+	}
+	if (pn == '/api/related') {
+		const id = url.searchParams.get('id');
+		const info = await innertube.music.getInfo(id);
+		const up_next = await info.getUpNext();
+		sendJSON(res,{success:true,up_next});
+		return;
 
+	}
 	// Static files
 	let filePath = pn === '/' ? '/index.html' : pn;
 	const fullPath = path.join(__dirname, 'public', filePath);

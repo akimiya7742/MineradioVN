@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.3
+- Change login method to cookie file instead of text
+- Support play related track
+
 ## v1.1.2
 - Use Youtube as a default provider, remove ALL Chinese-only provider
 - Support for Linux system

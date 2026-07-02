@@ -11387,8 +11387,8 @@
 		<div id="playlist-panel">
 			<div class="queue-head">
 				<div>
-					<div class="fx-title">歌单 / 队列</div>
-					<div class="fx-sub">QUEUE · 鼠标移开自动隐藏</div>
+					<div class="fx-title">Queue / Playlist</div>
+					<div class="fx-sub">QUEUE · Automatically hide when mouse moves away</div>
 				</div>
 				<div class="queue-head-act">
 					<button id="playlist-pin-btn" class="fx-mini-btn ghost playlist-pin-btn"
@@ -11400,7 +11400,7 @@
 							<path d="M14 4l-2 5-4 4-3 2 4 4 2-3 4-4 5-2z" />
 							<path d="M9 19l-4 4" />
 						</svg></button>
-					<button class="fx-mini-btn ghost" onclick="shuffleQueue()">随机</button>
+					<button class="fx-mini-btn ghost" onclick="shuffleQueue()">Suffle</button>
 				</div>
 			</div>
 			<div class="panel-tabs">
@@ -11730,26 +11730,24 @@
 			<div class="modal dual-login-modal" style="max-width: 450px; text-align: left;">
 				<div class="login-intro" style="margin-bottom: 20px;">
 					<div class="login-intro-kicker" style="letter-spacing: 2px;">YouTube Music</div>
-					<div class="login-intro-title" style="font-size: 20px; margin-top: 8px;">Login via Cookie</div>
+					<div class="login-intro-title" style="font-size: 20px; margin-top: 8px;">Login via cookie.txt</div>
 					<div class="login-intro-body" style="margin-top: 8px; opacity: 0.8;">
-						To access your private library and playlists, please paste your YouTube <b>__Secure-3PAPISID</b> or full cookie string below.
+						Upload your <b>Netscape formatted</b> cookie file (usually exported by browser extensions like "Get cookies.txt LOCALLY").
 					</div>
 				</div>
 				
 				<div style="margin-bottom: 15px;">
-					<textarea id="yt-cookie-input" class="custom-lyric-input" 
-						style="height: 120px; width: 100%; font-family: monospace; font-size: 11px;" 
-						placeholder="Paste cookie string here..."></textarea>
+					<!-- Chuyển sang input file -->
+					<input type="file" id="yt-cookie-file" accept=".txt" style="display: none;" onchange="updateFileName(this)">
+					<button class="modal-btn" style="width: 100%; border-style: dashed;" onclick="document.getElementById('yt-cookie-file').click()">
+						<span id="file-name-display">Click to select cookie.txt</span>
+					</button>
 					<div id="yt-login-status" style="font-size: 11px; margin-top: 8px; min-height: 15px;"></div>
 				</div>
 
 				<div class="btn-row" style="justify-content: flex-end; gap: 10px;">
 					<button class="modal-btn" onclick="closeLoginModal()">Cancel</button>
-					<button id="yt-login-submit" class="modal-btn primary" onclick="submitYoutubeCookie()">Connect Account</button>
-				</div>
-				
-				<div style="margin-top: 15px; font-size: 10px; color: rgba(255,255,255,0.4); line-height: 1.4;">
-					Note: Cookies are processed server-side to initialize the Innertube session. Your credentials are never stored in plain text.
+					<button id="yt-login-submit" class="modal-btn primary" onclick="submitYoutubeCookieFile()">Upload & Connect</button>
 				</div>
 			</div>
 		</div>
@@ -12020,7 +12018,7 @@
 		var emptyHomeActive = false;
 		var homeForcedOpen = false;
 		var homeSuppressed = false;
-		var homeDiscoverState = { loading: false, loaded: false, loggedIn: false, mode: 'starter', songs: [], playlists: [], podcasts: [], error: '', updatedAt: 0 };
+		var homeDiscoverState = { loading: false, loaded: false, loggedIn: false, mode: 'starter', songs: [], playlists: [], podcasts: [], error: '', updatedAt: 0, user: '' };
 		var homeDiscoverToken = 0;
 		var homeVisualPresetActive = false;
 		var homeVisualPrevPreset = 0;
@@ -12147,6 +12145,103 @@
 				btn.title = userCapsuleAutoHide ? '取消自动隐藏账号胶囊' : '自动隐藏账号胶囊';
 			}
 		}
+		async function fetchAndAddRelatedTracks(id, isManualReset = false) {
+			if (!id) return;
+			
+			// Nếu là chuyển bài tự động và bài này đã nằm trong "chuỗi liên quan" của bài trước đó thì bỏ qua
+			if (!isManualReset && currentAutoChainId !== "") return;
+
+			try {
+				const data = await apiJson(`/api/related?id=${id}`);
+				if (!data || !data.up_next || !data.up_next.contents) return;
+
+				const contents = data.up_next.contents;
+				const relatedTracks = contents.slice(1, 11).map(t => ({
+					id: t.video_id,
+					name: t.title.text,
+					artist: t.author,
+					album: t.album ? t.album.name : 'YouTube Music',
+					cover: t.thumbnail && t.thumbnail.length ? t.thumbnail[t.thumbnail.length - 1].url : '',
+					duration: t.duration ? t.duration.seconds : 0,
+					source: 'youtube'
+				}));
+
+				if (relatedTracks.length > 0) {
+					if (isManualReset) {
+						// RESET: Giữ lại bài hiện tại và thay thế toàn bộ danh sách phía sau bằng 10 bài mới
+						const currentSong = playQueue[currentIdx];
+						playQueue = [currentSong].concat(relatedTracks);
+						currentIdx = 0;
+						currentAutoChainId = id; // Đánh dấu ID bài gốc
+					} else {
+						// Chỉ thêm nếu chưa có (logic an toàn)
+						const currentIds = new Set(playQueue.map(s => s.id));
+						const newTracks = relatedTracks.filter(t => !currentIds.has(t.id));
+						playQueue = playQueue.concat(newTracks);
+					}
+
+					safeRenderQueuePanel('related-tracks-updated');
+					if (shelfManager && shelfManager.rebuild) shelfManager.rebuild(true);
+					console.log(`[Autoplay] Queue reset and added 10 related tracks for: ${id}`);
+				}
+			} catch (e) {
+				console.warn('Related tracks error:', e);
+			}
+		}
+		function updateFileName(input) {
+			const display = document.getElementById('file-name-display');
+			if (input.files && input.files[0]) {
+				display.textContent = "Selected: " + input.files[0].name;
+				display.style.color = "var(--fc-accent)";
+			}
+		}
+
+		async function submitYoutubeCookieFile() {
+			const fileInput = document.getElementById('yt-cookie-file');
+			const statusEl = document.getElementById('yt-login-status');
+			const submitBtn = document.getElementById('yt-login-submit');
+
+			if (!fileInput.files || !fileInput.files[0]) {
+				statusEl.textContent = 'Please select a cookie.txt file first.';
+				statusEl.style.color = '#ff8f9d';
+				return;
+			}
+
+			const file = fileInput.files[0];
+			const reader = new FileReader();
+
+			submitBtn.disabled = true;
+			submitBtn.textContent = 'Processing...';
+
+			reader.onload = async (e) => {
+				const content = e.target.result;
+				try {
+					const response = await fetch('/api/login', {
+						method: 'POST',
+						body: content
+					});
+					const result = await response.json();
+
+					if (result.success) {
+						loginStatus.loggedIn = true;
+						renderUserBtn();
+						showToast('YouTube Account Connected');
+						closeLoginModal();
+					} else {
+						throw new Error(result.error);
+					}
+				} catch (err) {
+					statusEl.textContent = 'Error: ' + err.message;
+					statusEl.style.color = '#ff8f9d';
+				} finally {
+					submitBtn.disabled = false;
+					submitBtn.textContent = 'Upload & Connect';
+				}
+			};
+
+			reader.readAsText(file);
+		}
+
 		function toggleUserCapsuleAutoHide(e) {
 			if (e && e.stopPropagation) e.stopPropagation();
 			userCapsuleAutoHide = !userCapsuleAutoHide;
@@ -16569,7 +16664,7 @@ void main(){
 		// 兼容旧变量名以便其它代码不破坏
 		var lyricsParticles = null;
 		var lyricsGeo = null;
-
+		var currentAutoChainId = ""; // Lưu ID của bài gốc đã dùng để tạo danh sách liên quan
 		// 三个 attribute: 源位置(随机扩散态), 目标位置(组成字), color, brightness
 		var lyricsAttrTargetA = null;
 		var lyricsAttrTargetB = null;
@@ -19648,28 +19743,10 @@ void main(){
 		/**
 		 * Checks for a saved cookie and logs in automatically
 		 */
+		// Cập nhật hàm initSavedYoutubeLogin để kiểm tra trạng thái login thực tế từ server
 		async function initSavedYoutubeLogin() {
-			const savedCookie = localStorage.getItem('mineradio-yt-cookie');
-			
-			if (savedCookie) {
-				console.log('[Auth] Attempting auto-login with saved cookie...');
-				try {
-					const response = await fetch(`/api/login?cookie=${encodeURIComponent(savedCookie)}`);
-					const result = await response.json();
-					
-					if (result.success) {
-						loginStatus.loggedIn = true;
-						renderUserBtn();
-						console.log('[Auth] Auto-login successful');
-					} else {
-						// If the cookie is expired or invalid, clear it
-						console.warn('[Auth] Saved cookie invalid, clearing.');
-						localStorage.removeItem('mineradio-yt-cookie');
-					}
-				} catch (e) {
-					console.error('[Auth] Auto-login network error');
-				}
-			}
+			console.log('[Auth] Checking session with server...');
+			await refreshLoginStatus(true); // Sử dụng luôn hàm refresh ở trên để đồng bộ state
 		}
 		async function fetchBeatPrefetchAudioUrl(song) {
 			if (!song) return null;
@@ -24083,7 +24160,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 					safeRenderQueuePanel('content-play-row');
 					safeShelfRebuild('content-play-row');
 					forcePlaybackControlsInteractive();
-					playQueueAt(playIndex, { preserveHomeState: true }).catch(function (e) {
+					playQueueAt(playIndex, { preserveHomeState: true, manualReset: true }).catch(function (e) {
 						console.warn('[ContentPlayRow]', e);
 					});
 					// 关闭内容框
@@ -25100,7 +25177,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			safeShelfRebuild('home-recommend', true);
 			
 			// Bắt đầu phát
-			playQueueAt(currentIdx);
+			playQueueAt(currentIdx, { manualReset: true });
 		}
 		function homeWeatherRadioUrl(opts) {
 			opts = opts || {};
@@ -25860,7 +25937,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			safeRenderQueuePanel('artist-detail-play');
 			safeShelfRebuild('artist-detail-play', true);
 			closeTrackDetailModal();
-			playQueueAt(i).catch(function (e) { console.warn('[ArtistDetailPlay]', e); });
+			playQueueAt(i,{ manualReset: true }).catch(function (e) { console.warn('[ArtistDetailPlay]', e); });
 		}
 		function collectArtistDetailSong(i) {
 			var song = detailArtistSongs[i];
@@ -27552,7 +27629,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			}
 			$results.classList.remove('show');
 			$input.value = ''; $input.blur();
-			playQueueAt(currentIdx);
+			playQueueAt(currentIdx, { manualReset: true });
 		}
 		var firstPlayDone = false;
 
@@ -28007,11 +28084,14 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 						if (isQQPlayback && await retryQQPlaybackWithCompatibleQuality(song, idx, token, opts, data, requestedQuality)) return;
 						forcePlaybackControlsInteractive();
 						if (opts.manual) {
-							showToast('播放启动失败，请重新选择歌曲');
+							showToast('Playback failed to start; please select the song again.');
 						} else {
-							showSourceFallbackNotice('歌曲已载入', '点击播放器中间的播放按钮继续播放。');
+							showSourceFallbackNotice('Song loaded.', 'Click the play button in the center of the player to resume playback.');
 						}
 						return;
+					}
+					if (song && song.id && (song.source === 'youtube' || song.provider === 'youtube')) {
+						fetchAndAddRelatedTracks(song.id, opts.manualReset || false);
 					}
 					forcePlaybackControlsInteractive();
 					markPlayPhase('session-begin');
@@ -28034,7 +28114,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 					hideLoading();
 					forcePlaybackControlsInteractive();
 					if (!isPlaybackRecursionError(err) && token === trackSwitchToken && !opts.manual && playQueue.length > 1) {
-						skipFailedQueueItem(idx, token, '当前歌曲加载失败，正在尝试队列里的下一首。');
+						skipFailedQueueItem(idx, token, 'Failed to load the current song; attempting the next one in the queue.');
 						return;
 					}
 					showToast(playbackFailureToastText(err));
@@ -28044,7 +28124,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				hideLoading();
 				forcePlaybackControlsInteractive();
 				if (!isPlaybackRecursionError(setupErr) && typeof token !== 'undefined' && token === trackSwitchToken && !opts.manual && playQueue.length > 1) {
-					skipFailedQueueItem(idx, token, '当前歌曲切换失败，正在尝试队列里的下一首。');
+					skipFailedQueueItem(idx, token, 'Failed to switch to the current song; attempting the next one in the queue.');
 					return;
 				}
 				showToast(playbackFailureToastText(setupErr));
@@ -28114,7 +28194,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				setPlayIcon(playing);
 				hideLoading();
 				forcePlaybackControlsInteractive();
-				if (!audio || !audio.src) showToast('播放控制失败');
+				if (!audio || !audio.src) showToast('Playback control failed.');
 			} finally {
 				playToggleBusy = false;
 			}
@@ -28218,7 +28298,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			var idx = modes.indexOf(playMode);
 			playMode = modes[(idx + 1) % modes.length];
 			updatePlayModeButton(true);
-			showToast('播放模式: ' + playModeLabel(playMode));
+			showToast('Playback mode: ' + playModeLabel(playMode));
 		}
 		updatePlayModeButton(false);
 
@@ -29028,7 +29108,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			safeSwitchPlaylistTab('queue', 'playlist-panel-detail');
 			safeShelfRebuild('playlist-panel-detail', true);
 			forcePlaybackControlsInteractive();
-			playQueueAt(index).catch(function (e) { console.warn('[PlaylistPanelDetailPlay]', e); });
+			playQueueAt(index, { manualReset: true }).catch(function (e) { console.warn('[PlaylistPanelDetailPlay]', e); });
 		}
 		function openPlaylistPanelDetailArtist(index) {
 			var song = playlistPanelDetailState.tracks && playlistPanelDetailState.tracks[index];
@@ -32736,7 +32816,6 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		function onUserBtnClick() {
 			if (loginStatus.loggedIn) {
 				if (confirm('Disconnect YouTube account?')) {
-					localStorage.removeItem('mineradio-yt-cookie');
 					loginStatus.loggedIn = false;
 					renderUserBtn();
 					showToast('Logged out');
@@ -32819,28 +32898,30 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		}
 		async function refreshLoginStatus(force) {
 			try {
-				var info = await apiJson('/api/login/status?t=' + Date.now());
+				const info = await apiJson('/api/login/status?t=' + Date.now());
 				loginStatusChecked = true;
 				loginStatusCheckFailed = false;
-				loginStatus = info || { loggedIn: false };
-				if (loginStatus.loggedIn && !hasPlatformLogin(activeAccountProvider)) activeAccountProvider = 'netease';
+
+				// Cập nhật object trạng thái chính
+				loginStatus.loggedIn = !!(info && info.loggedIn);
+				
+				// QUAN TRỌNG: Cập nhật cho Home Discover
+				homeDiscoverState.loggedIn = loginStatus.loggedIn;
+
 				renderUserBtn();
-				if (info && info.loggedIn) {
+
+				if (loginStatus.loggedIn) {
+					showToast("Connected to Youtube Music")
 					homeDiscoverState.loaded = false;
-					homeDiscoverState.loggedIn = true;
-					refreshUserPlaylists(true);
+					// Nếu đã login, tự động tải danh sách recommend
 					loadHomeDiscover(true);
-					syncLikeStatusForSongs(playQueue.concat(playlist || []));
-				} else {
-					userPlaylists = qqPlaylists.slice();
-					myPodcastCollections = [];
-					myPodcastItems = {};
-					likedSongMap = {};
-					updateLikeButtons();
+					// Đồng bộ các trạng thái khác nếu có
+					if (typeof refreshUserPlaylists === 'function') refreshUserPlaylists(true);
 				}
 				return info;
 			} catch (e) {
-				console.warn(e);
+				console.warn("[Login Check Failed]", e);
+				showToast("YouTube Music logged in fail!");
 				loginStatusChecked = true;
 				loginStatusCheckFailed = true;
 				renderUserBtn();
@@ -36310,7 +36391,9 @@ var visualGuideSteps = [
 		}
 		initMediaSessionHandlers();
 		animate();
-		initSavedYoutubeLogin();
+		setTimeout(() => {
+			initSavedYoutubeLogin();
+		}, 1500);
 	</script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 </body>
