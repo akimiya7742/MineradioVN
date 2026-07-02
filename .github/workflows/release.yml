@@ -25,15 +25,17 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-
       - name: Get Changelog
         id: get_changelog
         run: |
           VERSION=${{ github.event.inputs.version || github.ref_name }}
           VERSION=${VERSION#v}
-          echo "Build version: $VERSION"
-          sed -n "/^## v$VERSION/,/^## v/p" CHANGELOG.md | sed '$d' > RELEASE_NOTES.md
-          echo "changelog=$(cat RELEASE_NOTES.md)" >> $GITHUB_OUTPUT
+          CONTENT=$(sed -n "/^## v$VERSION/,/^## v/p" CHANGELOG.md | sed '$d')
+          {
+            echo 'changelog<<EOF'
+            echo "$CONTENT"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
 
       # Build cho Windows và Linux
       - name: Build Electron App
