@@ -19757,11 +19757,11 @@ void main(){
 			var softGrooveAnalysis = !!(analysisProfile && analysisProfile.softGroove);
 			try {
 				beatMapBusy = true;
-				if (options.prefetch) showBeatChip('预热下一首节奏…');
-				else if (options.background) showBeatChip('后台缓冲节奏…');
+				if (options.prefetch) showBeatChip('Cue up the next upbeat track.…');
+				else if (options.background) showBeatChip('Background buffering cadence…');
 				await yieldToIdle(beatAnalysisYieldMs(options, 140, 760));
 				if (token !== beatMapToken) { hideBeatChip(); beatMapBusy = false; return null; }
-				showBeatChip('正在分析节奏…');
+				showBeatChip('Analyzing the rhythm…');
 				var resp = await fetch(audioUrl);
 				if (token !== beatMapToken) { hideBeatChip(); return null; }
 				var ab = await resp.arrayBuffer();
