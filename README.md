@@ -7,14 +7,14 @@ Mineradio is an immersive music player for the Windows desktop. It combines a we
 
 ## Download the Windows Installer Now
 
-> **For users in mainland China:** We highly recommend using Lanzou Cloud to download. Open the link and download `Mineradio-1.1.1-Setup.exe` directly. The speed is usually more stable and closer to your full bandwidth compared to GitHub Releases.
+> **For users in mainland China:** We highly recommend using Lanzou Cloud to download. Open the link and download `Mineradio-1.1.2-Setup.exe` directly. The speed is usually more stable and closer to your full bandwidth compared to GitHub Releases.
 
 | Download Link | Target Users | URL |
 | --- | --- | --- |
-| Lanzou Cloud (Full Speed) | Preferred for Mainland China users | [Download Mineradio 1.1.1 Installer](https://xxhuber.lanzout.com/s/Mineradio) |
-| GitHub Release (Repo Fork) | Users with stable access to GitHub | [v1.1.1 Release](https://github.com/akimiya7742/MineradioVN/releases/tag/v1.1.1) |
+| Lanzou Cloud (Full Speed) | Preferred for Mainland China users | [Download Mineradio 1.1.2 Installer](https://xxhuber.lanzout.com/s/Mineradio) |
+| GitHub Release (Repo Fork) | Users with stable access to GitHub | [v1.1.2 Release](https://github.com/akimiya7742/MineradioVN/releases/tag/v1.1.2) |
 
-To install, simply download and run `Mineradio-1.1.1-Setup.exe`. **Do not** download `Source code`, `.blockmap`, or `latest.yml`, and do not treat `win-unpacked` as the official installation package.
+To install, simply download and run `Mineradio-1.1.2-Setup.exe`. **Do not** download `Source code`, `.blockmap`, or `latest.yml`, and do not treat `win-unpacked` as the official installation package.
 
 ## What to do if the Download or Installation is Blocked?
 
@@ -34,35 +34,31 @@ The core goal of version 1.1.1 is to clean up and reorganize Mineradio into a cl
 
 ## Current Version
 
-Current Version: `1.1.1`
+Current Version: `1.1.2`
 
-Status: 1.1.1 Clean Installation Release (Fork Version).
+Status: 1.1.2 Clean Installation Release (Fork Version).
 
-> **Security Notice:** Installing or distributing `v1.0.10` and earlier legacy installers is no longer recommended. Please isolate old installer packages and use the `Mineradio-1.1.1-Setup.exe` provided on this page for a fresh, clean installation.
+> **Security Notice:** Installing or distributing `v1.0.10` and earlier legacy installers is no longer recommended. Please isolate old installer packages and use the `Mineradio-1.1.2-Setup.exe` provided on this page for a fresh, clean installation.
 
 ## Core Features
 
-* **Open-Meteo Weather Radio:** Generates a tailored playback queue based on your current location, city, and weather mood.
-* **Dynamic Home Page:** Features the weather radio, daily recommendations, personal radio, "continue listening", listening profile insights, and quick access to your custom playlists.
-* **Wallpaper Galaxy Home Background:** Maintains a clean, interstellar atmosphere when nothing is playing.
+* **Dynamic Home Page:** Daily recommendations, personal radio, "continue listening", listening profile insights, and quick access to your custom playlists.
 * **Immersive Playback Visuals:** Switches to the *Emily* / *Default* playback state once music starts, where the lyric stage and particle stage work in perfect sync.
 * **Beat-Based Cinematic Camera System:** A visual engine that adapts dynamically to the rhythm of the music.
-* **Exclusive Visual Modes:** Tailored specifically for long podcasts and DJ sets.
 * **Lyric Stage Control:** Supports custom lyrics, lyric positioning, and advanced visual tweaking.
 * **Custom Album Art:** Supports image uploading and built-in cropping.
 * **3D Playlist Rack:** Triggered via right-click to let you intuitively browse through your playlist queues.
-* **NetEase Cloud Music Integration:** Full access to accounts, searching, playlists, podcasts, and more.
-* **QQ Music Integration:** Secondary support for searching, login status, and alternative audio sources.
 * **GitHub Releases Update Detection:** Automated update checks with an in-app download entrance linking to this fork.
+* **YouTube integration:** Search and play songs from YouTube.
 * **Instant Out-of-the-Box Experience:** Ships with a built-in "Default Test" visual user profile so the software's default look matches this preset perfectly on its first launch.
 
 ## User Guide
 
 Windows users can download the installer from the Releases section of this fork.
 
-Official distribution relies strictly on `Mineradio-1.1.1-Setup.exe`. It is not recommended to use the `win-unpacked` directory as a portable version. The installer will automatically create a desktop shortcut. If you directly run the packed `Mineradio.exe`, the application will also generate a desktop shortcut on its first run.
+Official distribution relies strictly on `Mineradio-1.1.2-Setup.exe`. It is not recommended to use the `win-unpacked` directory as a portable version. The installer will automatically create a desktop shortcut. If you directly run the packed `Mineradio.exe`, the application will also generate a desktop shortcut on its first run.
 
-If you have an older version installed, we recommend uninstalling it and isolating the old installer before performing a clean installation with the `v1.1.1` package.
+If you have an older version installed, we recommend uninstalling it and isolating the old installer before performing a clean installation with the `v1.1.2` package.
 
 ## Development and Setup
 
@@ -70,6 +66,7 @@ If you have an older version installed, we recommend uninstalling it and isolati
 npm install
 npm start
 npm run build:win
+npm run build:linux # for linux build
 
 ```
 

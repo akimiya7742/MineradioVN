@@ -2,7 +2,10 @@
 
 ## v1.1.2
 - Use Youtube as a default provider, remove ALL Chinese-only provider
-- Support Linux app
+- Support for Linux system
+- Remove unnecessary stuffs like: Weather, Radio,...
+- Translate UI to English
+- Support parsing ID3 tag and lyrics fetch for local music
 
 ## v1.1.1
 
