@@ -23,6 +23,9 @@
       "buildResources": "build"
     },
     "linux": {
+      "target": [
+        "AppImage"
+      ],
       "category": "Multimedia"
     },
     "afterPack": "build/after-pack.js",
