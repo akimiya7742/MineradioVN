@@ -10,7 +10,7 @@ function findNewestRceditInCache(cacheRoot) {
     var dir = stack.pop();
     var entries = [];
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { continue; }
-    entries.forEach(function(entry) {
+    entries.forEach(function (entry) {
       var fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         stack.push(fullPath);
@@ -35,12 +35,35 @@ function resolveRcedit(projectDir) {
     if (cached) candidates.push(cached);
   }
   candidates.push(path.join(projectDir, 'node_modules', 'electron-winstaller', 'vendor', 'rcedit.exe'));
-  var hit = candidates.find(function(candidate) { return candidate && fs.existsSync(candidate); });
+  var hit = candidates.find(function (candidate) { return candidate && fs.existsSync(candidate); });
   if (!hit) throw new Error('No usable rcedit executable was found for Mineradio icon injection.');
   return hit;
 }
 
 module.exports = async function afterPack(context) {
+  if (context.electronPlatformName === 'linux' || context.electronPlatformName === 'darwin') {
+    const browsersDir = path.join(context.appOutDir, 'browsers');
+    if (fs.existsSync(browsersDir)) {
+      console.log('[AfterPack] Setting execute permissions for browsers...');
+      const setPermissions = (dir) => {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          const fullPath = path.join(dir, file);
+          const stats = fs.statSync(fullPath);
+          if (stats.isDirectory()) {
+            setPermissions(fullPath);
+          } else {
+            if (file === 'chrome' || file === 'chromedriver') {
+              fs.chmodSync(fullPath, '755');
+              console.log(`[AfterPack] chmod 755: ${fullPath}`);
+            }
+          }
+        }
+      };
+
+      setPermissions(browsersDir);
+    }
+  }
   if (context.electronPlatformName !== 'win32') return;
 
   const appName = context.packager.appInfo.productFilename || 'Mineradio';

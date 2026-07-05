@@ -30,6 +30,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+  
+      - name: Install playwright browser
+        run: |
+          cmake -E make_directory resources/browsers
+          npm run playwright:install
 
       # Build tùy theo hệ điều hành (Tránh xung đột lệnh)
       - name: Build Electron App

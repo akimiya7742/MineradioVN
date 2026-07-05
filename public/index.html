@@ -1,5 +1,5 @@
 <!--
-	* Edited by akimiya7742 on 02/07/2026
+	* Edited by akimiya7742 on 04/07/2026
 	* Original work Copyright (C) 2026 XxHuberrr
 -->
 <!DOCTYPE html>
@@ -9053,6 +9053,15 @@
 			margin-top: 6px
 		}
 
+		#toast {
+			z-index: 400 !important;
+		}
+
+		#beat-chip {
+			z-index: 400 !important;
+			top: 130px;
+		}
+
 		.queue-item {
 			display: flex;
 			align-items: center;
@@ -10320,15 +10329,18 @@
 			backdrop-filter: blur(22px) saturate(1.16) !important;
 			-webkit-backdrop-filter: blur(22px) saturate(1.16) !important;
 		}
+
 		.home-recommend-container {
 			height: 100%;
 			overflow-y: auto;
 			padding-right: 10px;
 			scrollbar-width: none;
 		}
+
 		.home-recommend-container::-webkit-scrollbar {
 			display: none;
 		}
+
 		.fx-mini-btn,
 		.fx-toggle,
 		.fx-seg button,
@@ -10896,6 +10908,66 @@
 				grid-template-columns: repeat(3, minmax(0, 1fr))
 			}
 		}
+
+		/* Lyrics Control Popover */
+		.lyrics-control {
+			position: relative;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.lyrics-popover {
+			position: absolute;
+			left: 50%;
+			bottom: 46px;
+			transform: translateX(-50%) translateY(8px);
+			width: 140px;
+			padding: 8px;
+			border-radius: 14px;
+			background: var(--panel-glass-bg) !important;
+			backdrop-filter: var(--panel-glass-filter) !important;
+			border: 1px solid rgba(255, 255, 255, 0.1) !important;
+			box-shadow: var(--panel-glass-shadow) !important;
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 0.2s, transform 0.2s;
+			z-index: 10;
+		}
+
+		.lyrics-control:hover .lyrics-popover {
+			opacity: 1;
+			pointer-events: auto;
+			transform: translateX(-50%) translateY(0);
+		}
+
+		.lyrics-popover button {
+			width: 100%;
+			padding: 8px;
+			border: none;
+			border-radius: 8px;
+			background: rgba(255, 255, 255, 0.05);
+			color: rgba(255, 255, 255, 0.8);
+			font-size: 11px;
+			font-family: inherit;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.2s;
+			text-align: left;
+		}
+
+		.lyrics-popover button:hover {
+			background: rgba(var(--fc-accent-rgb), 0.15);
+			color: #fff;
+		}
+
+		.lyrics-popover button.active {
+			color: var(--fc-accent);
+			background: rgba(var(--fc-accent-rgb), 0.1);
+		}
 	</style>
 </head>
 
@@ -10908,9 +10980,10 @@
 			</div>
 			<div class="desktop-window-controls">
 				<button id="visual-guide-btn" class="icon-btn" type="button"
-					onclick="startVisualGuide({ manual: true })" title="View User Guide" aria-label="View User Guide">?</button>
-				<button id="update-entry" class="update-entry" type="button" onclick="openUpdatePanel()" title="New version found"
-					aria-label="New version found">
+					onclick="startVisualGuide({ manual: true })" title="View User Guide"
+					aria-label="View User Guide">?</button>
+				<button id="update-entry" class="update-entry" type="button" onclick="openUpdatePanel()"
+					title="New version found" aria-label="New version found">
 					<svg viewBox="0 0 24 24" aria-hidden="true">
 						<circle class="update-ring" cx="12" cy="12" r="8.8"></circle>
 						<circle id="update-progress-ring" class="update-progress-ring" cx="12" cy="12" r="8.8"></circle>
@@ -10919,7 +10992,8 @@
 					</svg>
 				</button>
 				<button id="diy-mode-btn" class="desktop-mode-btn" type="button" onclick="toggleDiyMode()"
-					title="Activate DIY enthusiast mode" aria-label="Activate DIY enthusiast mode" aria-pressed="false">DIY</button>
+					title="Activate DIY enthusiast mode" aria-label="Activate DIY enthusiast mode"
+					aria-pressed="false">DIY</button>
 				<button class="desktop-window-btn" data-window-action="minimize" title="Minimize" aria-label="Minimize">
 					<svg viewBox="0 0 16 16">
 						<path d="M3 8h10" />
@@ -10979,7 +11053,8 @@
 						<circle cx="11" cy="11" r="8" />
 						<path d="m21 21-4.35-4.35" />
 					</svg>
-					<input id="search-input" type="text" placeholder="Search for songs, artists..." autocomplete="off" spellcheck="false">
+					<input id="search-input" type="text" placeholder="Search for songs, artists..." autocomplete="off"
+						spellcheck="false">
 				</div>
 				<div id="search-results"></div>
 			</div>
@@ -10992,10 +11067,11 @@
 						<line x1="12" y1="3" x2="12" y2="15" />
 					</svg>
 				</button>
-				<button id="clear-cover-btn" class="icon-btn" onclick="clearCustomCoverForCurrent()" title="Remove custom cover"
-					aria-label="Remove custom cover">×</button>
+				<button id="clear-cover-btn" class="icon-btn" onclick="clearCustomCoverForCurrent()"
+					title="Remove custom cover" aria-label="Remove custom cover">×</button>
 				<div id="upload-tip" role="status" aria-live="polite">
-					<button class="upload-tip-close" onclick="closeUploadTip(true)" aria-label="Dismiss notification">×</button>
+					<button class="upload-tip-close" onclick="closeUploadTip(true)"
+						aria-label="Dismiss notification">×</button>
 					<span class="upload-tip-title">Import Entry Point</span>
 					You can upload songs here and also set custom cover art for the current track.
 				</div>
@@ -11008,7 +11084,8 @@
 					<div class="home-section-title" style="font-size: 24px;">Recommended for You</div>
 					<div class="home-section-note" id="home-recommend-status">Loading tracks...</div>
 				</div>
-				<div id="home-recommend-list" class="home-tile-row" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;">
+				<div id="home-recommend-list" class="home-tile-row"
+					style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;">
 					<!-- Track tiles sẽ được render ở đây -->
 				</div>
 			</div>
@@ -11018,7 +11095,8 @@
 		<div id="top-right">
 			<button id="user-capsule-hide-btn" class="user-capsule-hide-btn" type="button"
 				onclick="toggleUserCapsuleAutoHide(event)" title="Auto-hide account capsule">‹</button>
-			<button id="home-btn" class="icon-btn" onclick="goHome()" title="Return to Home" aria-label="Return to Home">
+			<button id="home-btn" class="icon-btn" onclick="goHome()" title="Return to Home"
+				aria-label="Return to Home">
 				<svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
 					<path d="M3 10.8 12 3l9 7.8" />
 					<path d="M5 10v10h14V10" />
@@ -11057,13 +11135,16 @@
 			<div class="user-archive-grid" id="user-archive-grid"></div>
 			<div class="fx-section-label">Custom color</div>
 			<div class="lyric-color-row">
-				<input id="ui-accent-picker" class="lyric-color-picker" type="color" value="#00f5d4" title="UI Accent Color">
+				<input id="ui-accent-picker" class="lyric-color-picker" type="color" value="#00f5d4"
+					title="UI Accent Color">
 				<div class="fx-color-row-label">Interface highlighting<small id="ui-accent-value">#00F5D4</small></div>
 				<button class="fx-mini-btn ghost" type="button" onclick="resetUiAccentColor()">default</button>
 			</div>
 			<div class="lyric-color-row visual-tint-row">
-				<input id="visual-tint-picker" class="lyric-color-picker" type="color" value="#9db8cf" title="Primary visual color">
-				<div class="fx-color-row-label">Primary visual color<small id="visual-tint-value">Extract color from cover</small></div>
+				<input id="visual-tint-picker" class="lyric-color-picker" type="color" value="#9db8cf"
+					title="Primary visual color">
+				<div class="fx-color-row-label">Primary visual color<small id="visual-tint-value">Extract color from
+						cover</small></div>
 				<button class="fx-mini-btn ghost" id="visual-tint-auto-btn" type="button"
 					onclick="openCoverColorPicker('visualTint')">Cover</button>
 				<button class="fx-mini-btn ghost" type="button" onclick="resetVisualTintColor()">default</button>
@@ -11076,7 +11157,8 @@
 						onmousemove="moveCoverColorLoupe(event)" onmouseleave="hideCoverColorLoupe()"></div>
 					<div class="cover-color-side">
 						<div class="cover-color-preview" id="cover-color-preview"></div>
-						<div class="cover-color-hint" id="cover-color-hint">Click anywhere on the album cover to pick a color, or use the recommended colors below.</div>
+						<div class="cover-color-hint" id="cover-color-hint">Click anywhere on the album cover to pick a
+							color, or use the recommended colors below.</div>
 						<div class="cover-color-swatches" id="cover-color-swatches"></div>
 					</div>
 				</div>
@@ -11096,7 +11178,8 @@
 			</div>
 			<div class="cover-color-loupe" id="cover-color-loupe"></div>
 			<div class="lyric-color-row">
-				<input id="home-accent-picker" class="lyric-color-picker" type="color" value="#00f5d4" title="Home Fill Color">
+				<input id="home-accent-picker" class="lyric-color-picker" type="color" value="#00f5d4"
+					title="Home Fill Color">
 				<div class="fx-color-row-label">Home Fill<small id="home-accent-value">#00F5D4</small></div>
 				<button class="fx-mini-btn ghost" type="button" onclick="resetHomeAccentColor()">default</button>
 			</div>
@@ -11106,12 +11189,14 @@
 				<button class="fx-mini-btn ghost" type="button" onclick="resetHomeIconColor()">default</button>
 			</div>
 			<div class="lyric-color-row">
-				<input id="visual-icon-picker" class="lyric-color-picker" type="color" value="#7fd8ff" title="Visual icons">
+				<input id="visual-icon-picker" class="lyric-color-picker" type="color" value="#7fd8ff"
+					title="Visual icons">
 				<div class="fx-color-row-label">Visual icons<small id="visual-icon-value">#7FD8FF</small></div>
 				<button class="fx-mini-btn ghost" type="button" onclick="resetVisualIconColor()">default</button>
 			</div>
 			<div class="lyric-color-row">
-				<input id="bg-color-picker" class="lyric-color-picker" type="color" value="#000000" title="Background color">
+				<input id="bg-color-picker" class="lyric-color-picker" type="color" value="#000000"
+					title="Background color">
 				<div class="fx-color-row-label">Background color<small id="bg-color-value">#000000</small></div>
 				<button class="fx-mini-btn ghost" type="button"
 					onclick="resetCustomBackgroundColor()">&#23553;&#38754;</button>
@@ -11122,18 +11207,18 @@
 				<div class="fx-color-row-label">Background media<small id="bg-image-value">Not set</small></div>
 				<button class="fx-mini-btn ghost" type="button" onclick="clearCustomBackgroundImage()">Clear</button>
 			</div>
-			<div class="fx-slider"><label>Background transparency</label><input id="fx-bgopacity" type="range" min="0" max="1"
-					step="0.01"><output></output></div>
-			<div class="fx-slider"><label>Color difference in console glass</label><input id="fx-glassaberration" type="range" min="0" max="140"
-					step="1"><output></output></div>
+			<div class="fx-slider"><label>Background transparency</label><input id="fx-bgopacity" type="range" min="0"
+					max="1" step="0.01"><output></output></div>
+			<div class="fx-slider"><label>Color difference in console glass</label><input id="fx-glassaberration"
+					type="range" min="0" max="140" step="1"><output></output></div>
 
 			<div class="fx-section-label">Master Control</div>
-			<div class="fx-slider"><label>Rhythmic intensity</label><input id="fx-intensity" type="range" min="0.2" max="1.6"
-					step="0.01"><output></output></div>
-			<div class="fx-slider"><label>Sense of depth / 3D effect</label><input id="fx-depth" type="range" min="0.2" max="1.8"
-					step="0.01"><output></output></div>
-			<div class="fx-slider"><label>Cover resolution</label><input id="fx-coverres" type="range" min="0.75" max="1.55"
-					step="0.01"><output></output></div>
+			<div class="fx-slider"><label>Rhythmic intensity</label><input id="fx-intensity" type="range" min="0.2"
+					max="1.6" step="0.01"><output></output></div>
+			<div class="fx-slider"><label>Sense of depth / 3D effect</label><input id="fx-depth" type="range" min="0.2"
+					max="1.8" step="0.01"><output></output></div>
+			<div class="fx-slider"><label>Cover resolution</label><input id="fx-coverres" type="range" min="0.75"
+					max="1.55" step="0.01"><output></output></div>
 			<div class="fx-slider"><label>Camera shake</label><input id="fx-cineshake" type="range" min="0" max="1.8"
 					step="0.01"><output></output></div>
 			<div class="fx-slider"><label>Lyrics Glowing</label><input id="fx-lyricglow" type="range" min="0" max="0.85"
@@ -11141,8 +11226,8 @@
 
 			<div class="fx-fold" id="fx-lyric-fold">
 				<div class="fx-fold-head" onclick="document.getElementById('fx-lyric-fold').classList.toggle('open')">
-					<span class="fx-fold-title"><strong>Lyrics Appearance</strong><small>Color / Source / Location</small></span><span
-						class="arrow">▶</span>
+					<span class="fx-fold-title"><strong>Lyrics Appearance</strong><small>Color / Source /
+							Location</small></span><span class="arrow">▶</span>
 				</div>
 				<div class="fx-fold-body">
 					<div class="fx-section-label">歌词颜色</div>
@@ -11218,71 +11303,76 @@
 			</div>
 
 			<div class="fx-fold" id="fx-overlay-fold">
-                <div class="fx-fold-head" onclick="document.getElementById('fx-overlay-fold').classList.toggle('open')">
-                    <span class="fx-fold-title"><strong>Overlay Effects</strong><small>Particles / Camera / Glow</small></span><span
-                        class="arrow">▶</span>
-                </div>
-                <div class="fx-fold-body">
-                    <div class="fx-toggle-grid">
-                        <div class="fx-toggle" id="t-float" onclick="toggleFx('floatLayer')"><span>Floating Particles</span><span
-                                class="dot"></span></div>
-                        <div class="fx-toggle" id="t-cinema" onclick="toggleFx('cinema')"><span>Cinematic Camera</span><span
-                                class="dot"></span></div>
-                        <div class="fx-toggle" id="t-lyricGlow" onclick="toggleFx('lyricGlow')"><span>Lyric Glow</span><span
-                                class="dot"></span></div>
-                        <div class="fx-toggle" id="t-lyricGlowBeat" onclick="toggleFx('lyricGlowBeat')">
-                            <span>Beat Glow</span><span class="dot"></span>
-                        </div>
-                        <div class="fx-toggle" id="t-lyricGlowParticles" onclick="toggleFx('lyricGlowParticles')">
-                            <span>Lyric Light Particles</span><span class="dot"></span>
-                        </div>
-                        <div class="fx-toggle" id="t-lyricCameraLock" onclick="toggleFx('lyricCameraLock')">
-                            <span>Lock Camera to Lyrics</span><span class="dot"></span>
-                        </div>
-                        <div class="fx-toggle" id="t-bloom" onclick="toggleFx('bloom')"><span>Particle Bloom</span><span
-                                class="dot"></span></div>
-                        <div class="fx-toggle" id="t-edge" onclick="toggleFx('edge')"><span>Outline Highlight</span><span
-                                class="dot"></span></div>
-                        <div class="fx-toggle" id="t-desktopLyrics" onclick="toggleFx('desktopLyrics')" title="Full-screen pinned lyrics">
-                            <span>Toggle Lyrics</span><span class="dot"></span>
-                        </div>
-                        <div class="fx-toggle" id="t-desktopLyricsClickThrough"
-                            onclick="toggleFx('desktopLyricsClickThrough')" title="Lock to prevent accidental clicks; hover over desktop lyrics and press Middle Click to lock/unlock">
-                            <span>Lock Desktop Lyrics</span><span class="dot"></span>
-                        </div>
-                        <div class="fx-toggle" id="t-desktopLyricsCinema" onclick="toggleFx('desktopLyricsCinema')"
-                            title="Bind desktop lyrics to beat-sync cinematic shake, while keeping baseline floating effect"><span>Desktop Lyrics Cinema Shake</span><span class="dot"></span></div>
-                        <div class="fx-toggle" id="t-desktopLyricsHighlight"
-                            onclick="toggleFx('desktopLyricsHighlight')" title="Highlight desktop lyrics based on playback progress"><span>Karaoke Lyric Follow</span><span
-                                class="dot"></span></div>
-                        <div class="fx-toggle dev-locked" id="t-wallpaperMode" onclick="toggleFx('wallpaperMode')"
-                            title="Under development, currently unavailable"><span>Wallpaper Mode<em class="fx-dev-badge">WIP</em></span><span class="dot"></span>
-                        </div>
-                    </div>
-                    <div class="fx-section-label">Desktop / Wallpaper</div>
-                    <div class="fx-slider"><label>Desktop Lyric Size</label><input id="fx-desktoplyricssize" type="range" min="0.72"
-                            max="1.55" step="0.01"><output></output></div>
-                    <div class="fx-slider"><label>Desktop Lyric Opacity</label><input id="fx-desktoplyricsopacity" type="range"
-                            min="0.28" max="1" step="0.01"><output></output></div>
-                    <div class="fx-slider"><label>Desktop Lyric Height</label><input id="fx-desktoplyricsy" type="range" min="0.08"
-                            max="0.92" step="0.01"><output></output></div>
-                    <div class="fx-section-label">Desktop FPS</div>
-                    <div class="fx-seg" id="desktop-lyrics-fps-seg">
-                        <button data-desktop-lyrics-fps="24">24</button>
-                        <button data-desktop-lyrics-fps="30">30</button>
-                        <button data-desktop-lyrics-fps="60">60</button>
-                        <button data-desktop-lyrics-fps="120">120</button>
-                        <button data-desktop-lyrics-fps="0">Unlimited</button>
-                    </div>
-                    <div class="fx-slider dev-locked"><label>Wallpaper Opacity</label><input id="fx-wallpaperopacity" type="range"
-                            min="0.35" max="1" step="0.01" disabled><output></output></div>
-                </div>
-            </div>
+				<div class="fx-fold-head" onclick="document.getElementById('fx-overlay-fold').classList.toggle('open')">
+					<span class="fx-fold-title"><strong>Overlay Effects</strong><small>Particles / Camera /
+							Glow</small></span><span class="arrow">▶</span>
+				</div>
+				<div class="fx-fold-body">
+					<div class="fx-toggle-grid">
+						<div class="fx-toggle" id="t-float" onclick="toggleFx('floatLayer')"><span>Floating
+								Particles</span><span class="dot"></span></div>
+						<div class="fx-toggle" id="t-cinema" onclick="toggleFx('cinema')"><span>Cinematic
+								Camera</span><span class="dot"></span></div>
+						<div class="fx-toggle" id="t-lyricGlow" onclick="toggleFx('lyricGlow')"><span>Lyric
+								Glow</span><span class="dot"></span></div>
+						<div class="fx-toggle" id="t-lyricGlowBeat" onclick="toggleFx('lyricGlowBeat')">
+							<span>Beat Glow</span><span class="dot"></span>
+						</div>
+						<div class="fx-toggle" id="t-lyricGlowParticles" onclick="toggleFx('lyricGlowParticles')">
+							<span>Lyric Light Particles</span><span class="dot"></span>
+						</div>
+						<div class="fx-toggle" id="t-lyricCameraLock" onclick="toggleFx('lyricCameraLock')">
+							<span>Lock Camera to Lyrics</span><span class="dot"></span>
+						</div>
+						<div class="fx-toggle" id="t-bloom" onclick="toggleFx('bloom')"><span>Particle Bloom</span><span
+								class="dot"></span></div>
+						<div class="fx-toggle" id="t-edge" onclick="toggleFx('edge')"><span>Outline
+								Highlight</span><span class="dot"></span></div>
+						<div class="fx-toggle" id="t-desktopLyrics" onclick="toggleFx('desktopLyrics')"
+							title="Full-screen pinned lyrics">
+							<span>Toggle Lyrics</span><span class="dot"></span>
+						</div>
+						<div class="fx-toggle" id="t-desktopLyricsClickThrough"
+							onclick="toggleFx('desktopLyricsClickThrough')"
+							title="Lock to prevent accidental clicks; hover over desktop lyrics and press Middle Click to lock/unlock">
+							<span>Lock Desktop Lyrics</span><span class="dot"></span>
+						</div>
+						<div class="fx-toggle" id="t-desktopLyricsCinema" onclick="toggleFx('desktopLyricsCinema')"
+							title="Bind desktop lyrics to beat-sync cinematic shake, while keeping baseline floating effect">
+							<span>Desktop Lyrics Cinema Shake</span><span class="dot"></span></div>
+						<div class="fx-toggle" id="t-desktopLyricsHighlight"
+							onclick="toggleFx('desktopLyricsHighlight')"
+							title="Highlight desktop lyrics based on playback progress"><span>Karaoke Lyric
+								Follow</span><span class="dot"></span></div>
+						<div class="fx-toggle dev-locked" id="t-wallpaperMode" onclick="toggleFx('wallpaperMode')"
+							title="Under development, currently unavailable"><span>Wallpaper Mode<em
+									class="fx-dev-badge">WIP</em></span><span class="dot"></span>
+						</div>
+					</div>
+					<div class="fx-section-label">Desktop / Wallpaper</div>
+					<div class="fx-slider"><label>Desktop Lyric Size</label><input id="fx-desktoplyricssize"
+							type="range" min="0.72" max="1.55" step="0.01"><output></output></div>
+					<div class="fx-slider"><label>Desktop Lyric Opacity</label><input id="fx-desktoplyricsopacity"
+							type="range" min="0.28" max="1" step="0.01"><output></output></div>
+					<div class="fx-slider"><label>Desktop Lyric Height</label><input id="fx-desktoplyricsy" type="range"
+							min="0.08" max="0.92" step="0.01"><output></output></div>
+					<div class="fx-section-label">Desktop FPS</div>
+					<div class="fx-seg" id="desktop-lyrics-fps-seg">
+						<button data-desktop-lyrics-fps="24">24</button>
+						<button data-desktop-lyrics-fps="30">30</button>
+						<button data-desktop-lyrics-fps="60">60</button>
+						<button data-desktop-lyrics-fps="120">120</button>
+						<button data-desktop-lyrics-fps="0">Unlimited</button>
+					</div>
+					<div class="fx-slider dev-locked"><label>Wallpaper Opacity</label><input id="fx-wallpaperopacity"
+							type="range" min="0.35" max="1" step="0.01" disabled><output></output></div>
+				</div>
+			</div>
 
 			<div class="fx-fold" id="fx-stage-fold">
 				<div class="fx-fold-head" onclick="document.getElementById('fx-stage-fold').classList.toggle('open')">
-					<span class="fx-fold-title"><strong>3D / 手势</strong><small>歌单架 / Camera Interaction</small></span><span
-						class="arrow">▶</span>
+					<span class="fx-fold-title"><strong>3D / 手势</strong><small>歌单架 / Camera
+							Interaction</small></span><span class="arrow">▶</span>
 				</div>
 				<div class="fx-fold-body">
 					<div class="fx-section-label">3D 歌单架</div>
@@ -11314,7 +11404,8 @@
 						<input id="shelf-accent-picker" class="lyric-color-picker" type="color" value="#f4d28a"
 							title="歌单架颜色">
 						<div class="fx-color-row-label">歌单架颜色<small id="shelf-accent-value">#F4D28A</small></div>
-						<button class="fx-mini-btn ghost" type="button" onclick="resetShelfAccentColor()">default</button>
+						<button class="fx-mini-btn ghost" type="button"
+							onclick="resetShelfAccentColor()">default</button>
 					</div>
 					<div class="fx-slider"><label>歌单架大小</label><input id="fx-shelfsize" type="range" min="0.65"
 							max="1.45" step="0.01"><output></output></div>
@@ -11328,8 +11419,8 @@
 							step="1"><output></output></div>
 					<div class="fx-slider"><label>整体透明度</label><input id="fx-shelfopacity" type="range" min="0.25"
 							max="1" step="0.01"><output></output></div>
-					<div class="fx-slider"><label>Background transparency</label><input id="fx-shelfbgalpha" type="range" min="0.25"
-							max="0.98" step="0.01"><output></output></div>
+					<div class="fx-slider"><label>Background transparency</label><input id="fx-shelfbgalpha"
+							type="range" min="0.25" max="0.98" step="0.01"><output></output></div>
 
 					<div class="fx-section-label">Camera Interaction</div>
 					<div class="fx-seg" id="cam-seg">
@@ -11369,8 +11460,8 @@
 							step="0.01"><output></output></div>
 					<div class="fx-slider"><label>色彩张力</label><input id="fx-color" type="range" min="0.5" max="2.0"
 							step="0.01"><output></output></div>
-					<div class="fx-slider"><label>Glow Strength</label><input id="fx-bloom" type="range" min="0" max="1.6"
-							step="0.01"><output></output></div>
+					<div class="fx-slider"><label>Glow Strength</label><input id="fx-bloom" type="range" min="0"
+							max="1.6" step="0.01"><output></output></div>
 					<div class="fx-slider"><label>离散感</label><input id="fx-scatter" type="range" min="0" max="0.5"
 							step="0.01"><output></output></div>
 					<div class="fx-slider"><label>背景压缩</label><input id="fx-bgfade" type="range" min="0" max="1.2"
@@ -11595,120 +11686,134 @@
 		</svg>
 		<button id="bottom-handle" type="button" aria-label="展开播放器控制台" title="播放器控制台"><span></span></button>
 		<div id="bottom-bar">
-            <div id="mini-queue-popover" class="mini-queue-popover" onclick="event.stopPropagation()">
-                <div class="mini-queue-head">
-                    <div>
-                        <div class="mini-queue-title">Queue</div>
-                        <div id="mini-queue-count" class="mini-queue-count">0 songs</div>
-                    </div>
-                    <button class="fx-mini-btn ghost" onclick="closeMiniQueue()" title="Close"
-                        style="height:26px;padding:0 9px;font-size:13px">×</button>
-                </div>
-                <div id="mini-queue-list" class="mini-queue-list"></div>
-            </div>
-            <div id="progress-bar">
-                <div id="progress-fill"></div>
-                <div id="progress-thumb" aria-hidden="true"></div>
-            </div>
-            <div id="controls">
-                <div class="control-cluster actions">
-                    <div class="control-track">
-                        <div id="control-cover" class="control-cover cover-empty" aria-hidden="true"></div>
-                        <div class="control-meta">
-                            <div id="control-title" class="control-title" onclick="openTrackDetailModal('song')"
-                                title="Song Details"></div>
-                            <div id="control-artist" class="control-artist" onclick="openTrackDetailModal('artist')"
-                                title="Artist Details"></div>
-                        </div>
-                    </div>
-                    <button id="heart-btn" class="ctrl-btn" onclick="toggleLikeCurrent()" title="Like"><svg
-                            class="heart-svg" viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                                d="M12 21.45c-.32 0-.62-.12-.86-.34l-1.23-1.12C5.54 16.03 2.25 13.05 2.25 8.9 2.25 5.48 4.88 2.9 8.28 2.9c1.7 0 3.35.72 4.52 1.96C13.97 3.62 15.62 2.9 17.32 2.9c3.4 0 6.03 2.58 6.03 6 0 4.15-3.29 7.13-7.66 11.09l-1.23 1.12c-.24.22-.54.34-.86.34z" />
-                        </svg></button>
-                    <button id="collect-btn" class="ctrl-btn" onclick="openCollectModalForCurrent()" title="Save to Playlist"><svg
-                            width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
-                            viewBox="0 0 24 24">
-                            <path d="M12 5v14" />
-                            <path d="M5 12h14" />
-                        </svg></button>
-                </div>
-                <div class="control-cluster transport">
-                    <button id="play-mode-btn" class="ctrl-btn" onclick="cyclePlayMode()" title="Switch Mode"><svg
-                            id="play-mode-icon" width="19" height="19" fill="none" stroke="currentColor"
-                            stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M17 2l4 4-4 4" />
-                            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                            <path d="M7 22l-4-4 4-4" />
-                            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-                        </svg></button>
-                    <button id="prev-btn" class="ctrl-btn" onclick="prevTrack()" title="Previous"><svg width="18" height="18"
-                            fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
-                        </svg></button>
-                    <button id="play-btn" class="ctrl-btn" onclick="togglePlay()" title="Play / Pause"><svg id="play-icon"
-                            width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z" />
-                        </svg></button>
-                    <button id="next-btn" class="ctrl-btn" onclick="nextTrack()" title="Next"><svg width="18" height="18"
-                            fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
-                        </svg></button>
-                    <button id="mini-queue-btn" class="ctrl-btn" onclick="toggleMiniQueue(event)" title="Queue"><svg
-                            width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"
-                            viewBox="0 0 24 24">
-                            <path d="M8 6h13" />
-                            <path d="M8 12h13" />
-                            <path d="M8 18h13" />
-                            <path d="M3 6h.01" />
-                            <path d="M3 12h.01" />
-                            <path d="M3 18h.01" />
-                        </svg></button>
-                </div>
-                <div class="control-cluster modes">
-                    <button class="ctrl-btn lyrics-toggle-btn" onclick="toggleLyricsPanel()" title="Lyrics"><span
-                            class="lyrics-word-icon">Lrc</span></button>
-                    <div id="volume-control" class="volume-control">
-                        <button id="volume-btn" class="ctrl-btn" onclick="toggleVolumePanel(event)" title="Volume / Mute"><svg
-                                id="volume-icon" width="18" height="18" fill="none" stroke="currentColor"
-                                stroke-width="2" viewBox="0 0 24 24">
-                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                                <path d="M15 9.5a4 4 0 0 1 0 5" />
-                            </svg></button>
-                        <div class="volume-popover" onclick="event.stopPropagation()">
-                            <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1"
-                                aria-label="Volume">
-                            <span id="volume-value">100%</span>
-                        </div>
-                    </div>
-                    <button id="controls-hide-btn" class="ctrl-btn active" onclick="toggleControlsAutoHide()"
-                        title="Auto-hide Control Bar"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"
-                            viewBox="0 0 24 24">
-                            <path d="M5 8h14" />
-                            <path d="M8 12h8" />
-                            <path d="M10 16h4" />
-                        </svg></button>
-                    <button id="immersive-btn" class="ctrl-btn" onclick="toggleImmersiveMode()" title="Immersive Mode"
-                        aria-label="Immersive Mode" aria-pressed="false"><svg width="19" height="19" fill="none"
-                            stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
-                            <path d="M4 9V5a1 1 0 0 1 1-1h4" />
-                            <path d="M15 4h4a1 1 0 0 1 1 1v4" />
-                            <path d="M20 15v4a1 1 0 0 1-1 1h-4" />
-                            <path d="M9 20H5a1 1 0 0 1-1-1v-4" />
-                            <circle cx="12" cy="12" r="2.2" />
-                        </svg></button>
-                    <button class="ctrl-btn fullscreen-toggle-btn" onclick="toggleFullscreen()" title="Maximize (F)"><svg
-                            width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
-                            viewBox="0 0 24 24">
-                            <path d="M3 7V3h4" />
-                            <path d="M21 7V3h-4" />
-                            <path d="M3 17v4h4" />
-                            <path d="M21 17v4h-4" />
-                        </svg></button>
-                    <div id="time-display">0:00 / 0:00</div>
-                </div>
-            </div>
-        </div>
+			<div id="mini-queue-popover" class="mini-queue-popover" onclick="event.stopPropagation()">
+				<div class="mini-queue-head">
+					<div>
+						<div class="mini-queue-title">Queue</div>
+						<div id="mini-queue-count" class="mini-queue-count">0 songs</div>
+					</div>
+					<button class="fx-mini-btn ghost" onclick="closeMiniQueue()" title="Close"
+						style="height:26px;padding:0 9px;font-size:13px">×</button>
+				</div>
+				<div id="mini-queue-list" class="mini-queue-list"></div>
+			</div>
+			<div id="progress-bar">
+				<div id="progress-fill"></div>
+				<div id="progress-thumb" aria-hidden="true"></div>
+			</div>
+			<div id="controls">
+				<div class="control-cluster actions">
+					<div class="control-track">
+						<div id="control-cover" class="control-cover cover-empty" aria-hidden="true"></div>
+						<div class="control-meta">
+							<div id="control-title" class="control-title" onclick="openTrackDetailModal('song')"
+								title="Song Details"></div>
+							<div id="control-artist" class="control-artist" onclick="openTrackDetailModal('artist')"
+								title="Artist Details"></div>
+						</div>
+					</div>
+					<button id="heart-btn" class="ctrl-btn" onclick="toggleLikeCurrent()" title="Like"><svg
+							class="heart-svg" viewBox="0 0 24 24" aria-hidden="true">
+							<path
+								d="M12 21.45c-.32 0-.62-.12-.86-.34l-1.23-1.12C5.54 16.03 2.25 13.05 2.25 8.9 2.25 5.48 4.88 2.9 8.28 2.9c1.7 0 3.35.72 4.52 1.96C13.97 3.62 15.62 2.9 17.32 2.9c3.4 0 6.03 2.58 6.03 6 0 4.15-3.29 7.13-7.66 11.09l-1.23 1.12c-.24.22-.54.34-.86.34z" />
+						</svg></button>
+					<button id="collect-btn" class="ctrl-btn" onclick="openCollectModalForCurrent()"
+						title="Save to Playlist"><svg width="18" height="18" fill="none" stroke="currentColor"
+							stroke-width="2" viewBox="0 0 24 24">
+							<path d="M12 5v14" />
+							<path d="M5 12h14" />
+						</svg></button>
+				</div>
+				<div class="control-cluster transport">
+					<button id="play-mode-btn" class="ctrl-btn" onclick="cyclePlayMode()" title="Switch Mode"><svg
+							id="play-mode-icon" width="19" height="19" fill="none" stroke="currentColor"
+							stroke-width="2" viewBox="0 0 24 24">
+							<path d="M17 2l4 4-4 4" />
+							<path d="M3 11V9a4 4 0 0 1 4-4h14" />
+							<path d="M7 22l-4-4 4-4" />
+							<path d="M21 13v2a4 4 0 0 1-4 4H3" />
+						</svg></button>
+					<button id="prev-btn" class="ctrl-btn" onclick="prevTrack()" title="Previous"><svg width="18"
+							height="18" fill="currentColor" viewBox="0 0 24 24">
+							<path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+						</svg></button>
+					<button id="play-btn" class="ctrl-btn" onclick="togglePlay()" title="Play / Pause"><svg
+							id="play-icon" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+							<path d="M8 5v14l11-7z" />
+						</svg></button>
+					<button id="next-btn" class="ctrl-btn" onclick="nextTrack()" title="Next"><svg width="18"
+							height="18" fill="currentColor" viewBox="0 0 24 24">
+							<path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+						</svg></button>
+					<button id="mini-queue-btn" class="ctrl-btn" onclick="toggleMiniQueue(event)" title="Queue"><svg
+							width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"
+							viewBox="0 0 24 24">
+							<path d="M8 6h13" />
+							<path d="M8 12h13" />
+							<path d="M8 18h13" />
+							<path d="M3 6h.01" />
+							<path d="M3 12h.01" />
+							<path d="M3 18h.01" />
+						</svg></button>
+				</div>
+				<div class="control-cluster modes">
+					<!-- Nút Lyrics mới với Popover -->
+					<div class="lyrics-control">
+						<button class="ctrl-btn lyrics-toggle-btn" onclick="toggleLyricsPanel()" title="Lyrics">
+							<span class="lyrics-word-icon">Lrc</span>
+						</button>
+						<div class="lyrics-popover">
+							<button onclick="fetchLyricForCurrent()">LRCLIB (Auto)</button>
+							<button onclick="document.getElementById('lrc-file-input').click()">Local File
+								(.lrc)</button>
+							<button onclick="toggleLyricsPanel(false)">Off</button>
+						</div>
+					</div>
+
+					<!-- Input file ẩn để chọn file lrc -->
+					<input type="file" id="lrc-file-input" accept=".lrc" style="display:none"
+						onchange="handleLocalLrcUpload(event)">
+					<div id="volume-control" class="volume-control">
+						<button id="volume-btn" class="ctrl-btn" onclick="toggleVolumePanel(event)"
+							title="Volume / Mute"><svg id="volume-icon" width="18" height="18" fill="none"
+								stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+								<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+								<path d="M15 9.5a4 4 0 0 1 0 5" />
+							</svg></button>
+						<div class="volume-popover" onclick="event.stopPropagation()">
+							<input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1"
+								aria-label="Volume">
+							<span id="volume-value">100%</span>
+						</div>
+					</div>
+					<button id="controls-hide-btn" class="ctrl-btn active" onclick="toggleControlsAutoHide()"
+						title="Auto-hide Control Bar"><svg width="19" height="19" fill="none" stroke="currentColor"
+							stroke-width="2" viewBox="0 0 24 24">
+							<path d="M5 8h14" />
+							<path d="M8 12h8" />
+							<path d="M10 16h4" />
+						</svg></button>
+					<button id="immersive-btn" class="ctrl-btn" onclick="toggleImmersiveMode()" title="Immersive Mode"
+						aria-label="Immersive Mode" aria-pressed="false"><svg width="19" height="19" fill="none"
+							stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+							<path d="M4 9V5a1 1 0 0 1 1-1h4" />
+							<path d="M15 4h4a1 1 0 0 1 1 1v4" />
+							<path d="M20 15v4a1 1 0 0 1-1 1h-4" />
+							<path d="M9 20H5a1 1 0 0 1-1-1v-4" />
+							<circle cx="12" cy="12" r="2.2" />
+						</svg></button>
+					<button class="ctrl-btn fullscreen-toggle-btn" onclick="toggleFullscreen()"
+						title="Maximize (F)"><svg width="18" height="18" fill="none" stroke="currentColor"
+							stroke-width="2" viewBox="0 0 24 24">
+							<path d="M3 7V3h4" />
+							<path d="M21 7V3h-4" />
+							<path d="M3 17v4h4" />
+							<path d="M21 17v4h-4" />
+						</svg></button>
+					<div id="time-display">0:00 / 0:00</div>
+				</div>
+			</div>
+		</div>
 
 		<input type="file" id="file-input" accept=".mp3,.flac,.wav,.ogg,.m4a,.jpg,.jpeg,.png,.webp" multiple
 			style="display:none">
@@ -11730,49 +11835,45 @@
 			<div class="modal dual-login-modal" style="max-width: 450px; text-align: left;">
 				<div class="login-intro" style="margin-bottom: 20px;">
 					<div class="login-intro-kicker" style="letter-spacing: 2px;">YouTube Music</div>
-					<div class="login-intro-title" style="font-size: 20px; margin-top: 8px;">Login via cookie.txt</div>
+					<div class="login-intro-title" style="font-size: 20px; margin-top: 8px;">Login via browser</div>
 					<div class="login-intro-body" style="margin-top: 8px; opacity: 0.8;">
-						Upload your <b>Netscape formatted</b> cookie file (usually exported by browser extensions like "Get cookies.txt LOCALLY").
+						This will open <b>your browser</b> and you will need to proceed your login manually!").
 					</div>
-				</div>
-				
-				<div style="margin-bottom: 15px;">
-					<!-- Chuyển sang input file -->
-					<input type="file" id="yt-cookie-file" accept=".txt" style="display: none;" onchange="updateFileName(this)">
-					<button class="modal-btn" style="width: 100%; border-style: dashed;" onclick="document.getElementById('yt-cookie-file').click()">
-						<span id="file-name-display">Click to select cookie.txt</span>
-					</button>
-					<div id="yt-login-status" style="font-size: 11px; margin-top: 8px; min-height: 15px;"></div>
 				</div>
 
 				<div class="btn-row" style="justify-content: flex-end; gap: 10px;">
 					<button class="modal-btn" onclick="closeLoginModal()">Cancel</button>
-					<button id="yt-login-submit" class="modal-btn primary" onclick="submitYoutubeCookieFile()">Upload & Connect</button>
+					<button id="yt-login-submit" class="modal-btn primary"
+						onclick="submitYoutubeCookieFile()">Login</button>
 				</div>
 			</div>
 		</div>
 
-        <div id="user-modal" class="modal-mask">
-            <div class="modal dual-user-modal" style="max-width: 400px; text-align: center;">
-                <h2 style="font-size: 18px; margin-bottom: 16px;">Account Profile</h2>
-                
-                <div style="padding: 24px 12px; background: rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 20px;">
-                    <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.1); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
-                        👤
-                    </div>
-                    <div style="font-size: 15px; color: #fff; font-weight: 600; margin-bottom: 4px;">Guest User</div>
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.4);">Local Session Only</div>
-                </div>
+		<div id="user-modal" class="modal-mask">
+			<div class="modal dual-user-modal" style="max-width: 400px; text-align: center;">
+				<h2 style="font-size: 18px; margin-bottom: 16px;">Account Profile</h2>
 
-                <div id="account-hint" class="account-hint" style="color: #ffb74d; background: rgba(255,183,77,0.08); border: 1px solid rgba(255,183,77,0.2); padding: 10px 14px; border-radius: 8px; font-size: 12px; text-align: left; line-height: 1.5; margin-bottom: 20px;">
-                    💡 <b>Feature Preview:</b> Third-party platform integration (YouTube) is currently under development. Multi-account cloud backup will be unlocked in a future update.
-                </div>
+				<div
+					style="padding: 24px 12px; background: rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 20px;">
+					<div
+						style="width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.1); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+						👤
+					</div>
+					<div style="font-size: 15px; color: #fff; font-weight: 600; margin-bottom: 4px;">Guest User</div>
+					<div style="font-size: 12px; color: rgba(255,255,255,0.4);">Local Session Only</div>
+				</div>
 
-                <div class="btn-row" style="justify-content: flex-end;">
-                    <button class="modal-btn primary" onclick="closeUserModal()">Close</button>
-                </div>
-            </div>
-        </div>
+				<div id="account-hint" class="account-hint"
+					style="color: #ffb74d; background: rgba(255,183,77,0.08); border: 1px solid rgba(255,183,77,0.2); padding: 10px 14px; border-radius: 8px; font-size: 12px; text-align: left; line-height: 1.5; margin-bottom: 20px;">
+					💡 <b>Feature Preview:</b> Third-party platform integration (YouTube) is currently under
+					development. Multi-account cloud backup will be unlocked in a future update.
+				</div>
+
+				<div class="btn-row" style="justify-content: flex-end;">
+					<button class="modal-btn primary" onclick="closeUserModal()">Close</button>
+				</div>
+			</div>
+		</div>
 		<!-- 封面裁剪模态 -->
 		<div id="cover-crop-modal" class="modal-mask">
 			<div class="modal cover-crop-modal">
@@ -11813,33 +11914,34 @@
 		</div>
 
 		<div id="local-beat-modal" class="modal-mask">
-            <div class="modal local-beat-modal">
-                <h2>Local Beat Analysis</h2>
-                <div class="local-beat-track">
-                    <div id="local-beat-title" class="local-beat-track-title">Local Track</div>
-                    <div id="local-beat-sub" class="local-beat-track-sub">Select a cinematic perspective analysis method</div>
-                </div>
-                <div class="local-beat-tabs">
-                    <button id="local-beat-tab-mr" class="local-beat-tab active" type="button"
-                        onclick="selectLocalBeatMode('mr')">
-                        <b>MR Analysis</b><span>Daily Cinematic Perspective</span>
-                    </button>
-                    <button id="local-beat-tab-dj" class="local-beat-tab" type="button"
-                        onclick="selectLocalBeatMode('dj')">
-                        <b>DJ Analysis</b><span>Long Mix / Strong Beat</span>
-                    </button>
-                </div>
-                <div id="local-beat-desc" class="local-beat-desc"></div>
-                <div id="local-beat-status" class="local-beat-status"></div>
-                <div class="btn-row">
-                    <button id="local-beat-later-btn" class="modal-btn" onclick="closeLocalBeatModal()">Not Now</button>
-                    <button id="local-beat-cancel-btn" class="modal-btn" onclick="cancelLocalBeatAnalysis()"
-                        style="display:none">Cancel</button>
-                    <button id="local-beat-start-btn" class="modal-btn primary"
-                        onclick="startLocalBeatAnalysis()">Start Analysis</button>
-                </div>
-            </div>
-        </div>
+			<div class="modal local-beat-modal">
+				<h2>Local Beat Analysis</h2>
+				<div class="local-beat-track">
+					<div id="local-beat-title" class="local-beat-track-title">Local Track</div>
+					<div id="local-beat-sub" class="local-beat-track-sub">Select a cinematic perspective analysis method
+					</div>
+				</div>
+				<div class="local-beat-tabs">
+					<button id="local-beat-tab-mr" class="local-beat-tab active" type="button"
+						onclick="selectLocalBeatMode('mr')">
+						<b>MR Analysis</b><span>Daily Cinematic Perspective</span>
+					</button>
+					<button id="local-beat-tab-dj" class="local-beat-tab" type="button"
+						onclick="selectLocalBeatMode('dj')">
+						<b>DJ Analysis</b><span>Long Mix / Strong Beat</span>
+					</button>
+				</div>
+				<div id="local-beat-desc" class="local-beat-desc"></div>
+				<div id="local-beat-status" class="local-beat-status"></div>
+				<div class="btn-row">
+					<button id="local-beat-later-btn" class="modal-btn" onclick="closeLocalBeatModal()">Not Now</button>
+					<button id="local-beat-cancel-btn" class="modal-btn" onclick="cancelLocalBeatAnalysis()"
+						style="display:none">Cancel</button>
+					<button id="local-beat-start-btn" class="modal-btn primary" onclick="startLocalBeatAnalysis()">Start
+						Analysis</button>
+				</div>
+			</div>
+		</div>
 
 		<div id="custom-lyric-modal" class="modal-mask">
 			<div class="modal custom-lyric-modal">
@@ -11913,7 +12015,8 @@
 				<div id="visual-guide-kicker" class="visual-guide-kicker">Guide</div>
 				<div id="visual-guide-title" class="visual-guide-title"></div>
 				<div id="visual-guide-body" class="visual-guide-body"></div>
-				<div id="visual-guide-hint" class="visual-guide-hint">You can also click on a blank area to continue.</div>
+				<div id="visual-guide-hint" class="visual-guide-hint">You can also click on a blank area to continue.
+				</div>
 				<div class="visual-guide-actions">
 					<button type="button" onclick="closeVisualGuide(true)">Close</button>
 					<div id="visual-guide-progress" class="visual-guide-progress"></div>
@@ -12147,7 +12250,7 @@
 		}
 		async function fetchAndAddRelatedTracks(id, isManualReset = false) {
 			if (!id) return;
-			
+
 			// Nếu là chuyển bài tự động và bài này đã nằm trong "chuỗi liên quan" của bài trước đó thì bỏ qua
 			if (!isManualReset && currentAutoChainId !== "") return;
 
@@ -12197,49 +12300,28 @@
 		}
 
 		async function submitYoutubeCookieFile() {
-			const fileInput = document.getElementById('yt-cookie-file');
-			const statusEl = document.getElementById('yt-login-status');
-			const submitBtn = document.getElementById('yt-login-submit');
-
-			if (!fileInput.files || !fileInput.files[0]) {
-				statusEl.textContent = 'Please select a cookie.txt file first.';
-				statusEl.style.color = '#ff8f9d';
-				return;
-			}
-
-			const file = fileInput.files[0];
-			const reader = new FileReader();
-
+			const submitBtn = document.getElementById('yt-login-submit')
 			submitBtn.disabled = true;
 			submitBtn.textContent = 'Processing...';
-
-			reader.onload = async (e) => {
-				const content = e.target.result;
-				try {
-					const response = await fetch('/api/login', {
-						method: 'POST',
-						body: content
-					});
-					const result = await response.json();
-
-					if (result.success) {
-						loginStatus.loggedIn = true;
-						renderUserBtn();
-						showToast('YouTube Account Connected');
-						closeLoginModal();
-					} else {
-						throw new Error(result.error);
-					}
-				} catch (err) {
-					statusEl.textContent = 'Error: ' + err.message;
-					statusEl.style.color = '#ff8f9d';
-				} finally {
-					submitBtn.disabled = false;
-					submitBtn.textContent = 'Upload & Connect';
+			try {
+				const response = await fetch('/api/login');
+				const result = await response.json();
+				if (result.success) {
+					loginStatus.loggedIn = true;
+					renderUserBtn();
+					showToast('YouTube Account Connected');
+					loadHomeDiscover();
+					closeLoginModal();
+				} else {
+					throw new Error(result.error);
 				}
-			};
-
-			reader.readAsText(file);
+			} catch (err) {
+				statusEl.textContent = 'Error: ' + err.message;
+				statusEl.style.color = '#ff8f9d';
+			} finally {
+				submitBtn.disabled = false;
+				submitBtn.textContent = 'Login';
+			}
 		}
 
 		function toggleUserCapsuleAutoHide(e) {
@@ -19600,72 +19682,6 @@ void main(){
 			return 'local:' + localKey + ':' + (mode === 'dj' ? 'dj' : 'mr');
 		}
 
-		function updateBeatDiskCacheStatus(data) {
-			if (!data) return;
-			beatDiskCacheStatus.checked = true;
-			beatDiskCacheStatus.enabled = !!data.enabled || data.mode === 'disk';
-			beatDiskCacheStatus.mode = data.mode || (beatDiskCacheStatus.enabled ? 'disk' : 'memory-only');
-			beatDiskCacheStatus.reason = data.reason || '';
-			if (!beatDiskCacheStatus.enabled && !beatDiskCacheNoticeLogged) {
-				beatDiskCacheNoticeLogged = true;
-				console.log('节拍磁盘缓存不可用，已降级为本次运行内存缓存:', beatDiskCacheStatus.reason || 'unknown');
-			}
-		}
-
-		async function ensureBeatDiskCacheStatus() {
-			if (beatDiskCacheStatus.checked) return beatDiskCacheStatus;
-			try {
-				updateBeatDiskCacheStatus(await apiJson('/api/beatmap/cache/status?t=' + Date.now()));
-			} catch (e) {
-				updateBeatDiskCacheStatus({ enabled: false, mode: 'memory-only', reason: 'STATUS_FAILED' });
-			}
-			return beatDiskCacheStatus;
-		}
-
-		async function readBeatDiskCache(key) {
-			if (!key || beatMapCache[key]) return beatMapCache[key] || null;
-			var st = await ensureBeatDiskCacheStatus();
-			if (!st.enabled) return null;
-			try {
-				var r = await apiJson('/api/beatmap/cache?key=' + encodeURIComponent(key) + '&t=' + Date.now());
-				if (r && r.enabled === false) updateBeatDiskCacheStatus(r);
-				if (!r || !r.hit || !r.map) return null;
-				var map = unpackLocalBeatMap(r.map);
-				if (!map) return null;
-				beatMapCache[key] = map;
-				return map;
-			} catch (e) {
-				console.warn('beat disk cache read failed:', e);
-				return null;
-			}
-		}
-
-		async function writeBeatDiskCache(key, map, song, mode) {
-			if (!key || !map) return false;
-			var st = await ensureBeatDiskCacheStatus();
-			if (!st.enabled) return false;
-			try {
-				var packed = packLocalBeatMap(map);
-				if (!packed) return false;
-				var r = await apiJson('/api/beatmap/cache', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						key: key,
-						mode: mode || 'mr',
-						provider: songProviderKey(song),
-						title: song && song.name,
-						artist: song && song.artist,
-						map: packed
-					})
-				});
-				if (r && r.enabled === false) updateBeatDiskCacheStatus(r);
-				return !!(r && r.ok);
-			} catch (e) {
-				console.warn('beat disk cache write failed:', e);
-				return false;
-			}
-		}
 
 		function isBeatPrefetchCandidate(song) {
 			if (!song || isPodcastSong(song) || song.type === 'local' || song.localUrl) return false;
@@ -19720,11 +19736,11 @@ void main(){
 				if (result.success) {
 					// --- SAVE TO LOCALSTORAGE ---
 					localStorage.setItem('mineradio-yt-cookie', cookie);
-					
+
 					loginStatus.loggedIn = true;
 					renderUserBtn();
 					showToast('YouTube Music Connected');
-					
+
 					setTimeout(() => {
 						closeLoginModal();
 						submitBtn.disabled = false;
@@ -25085,7 +25101,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		}
 		async function loadHomeDiscover(force) {
 			if (homeDiscoverState.loading) return;
-			
+
 			// Kiểm tra đăng nhập trước
 			if (!loginStatus.loggedIn) {
 				showLoginModal({ source: 'home-recommend' });
@@ -25095,7 +25111,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 
 			const token = ++homeDiscoverToken;
 			homeDiscoverState.loading = true;
-			
+
 			const statusEl = document.getElementById('home-recommend-status');
 			if (statusEl) statusEl.textContent = "Fetching your music...";
 
@@ -25131,7 +25147,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		function renderHomeRecommend() {
 			const listEl = document.getElementById('home-recommend-list');
 			const statusEl = document.getElementById('home-recommend-status');
-			
+
 			if (!listEl) return;
 
 			if (homeDiscoverState.songs.length === 0) {
@@ -25175,7 +25191,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 
 			safeRenderQueuePanel('home-recommend');
 			safeShelfRebuild('home-recommend', true);
-			
+
 			// Bắt đầu phát
 			playQueueAt(currentIdx, { manualReset: true });
 		}
@@ -25479,7 +25495,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			const show = shouldShowEmptyHome();
 			emptyHomeActive = show;
 			document.body.classList.toggle('empty-home-active', show);
-			
+
 			if (show) {
 				activateHomeWallpaperPreview();
 				loadHomeDiscover(opts.forceLoad);
@@ -25937,7 +25953,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			safeRenderQueuePanel('artist-detail-play');
 			safeShelfRebuild('artist-detail-play', true);
 			closeTrackDetailModal();
-			playQueueAt(i,{ manualReset: true }).catch(function (e) { console.warn('[ArtistDetailPlay]', e); });
+			playQueueAt(i, { manualReset: true }).catch(function (e) { console.warn('[ArtistDetailPlay]', e); });
 		}
 		function collectArtistDetailSong(i) {
 			var song = detailArtistSongs[i];
@@ -26093,8 +26109,8 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		}
 		function resolveArtistSongForDetail(song, artist) {
 			var provider = songProviderKey(song) === 'qq' ? 'qq' : 'netease';
-			var url = provider === 'qq'
-				? '/api/qq/search?keywords=' + encodeURIComponent(artist) + '&limit=8'
+			var url = provider === 'spt'
+				? '/api/spt/search?keywords=' + encodeURIComponent(artist) + '&limit=8'
 				: '/api/search?keywords=' + encodeURIComponent(artist) + '&limit=10';
 			return apiJson(url).then(function (r) {
 				var songs = (r && r.songs) || [];
@@ -27007,19 +27023,19 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		updateSearchModeTabs();
 
 		function songProviderKey(song) {
-			if (song && (song.provider === 'qq' || song.source === 'qq' || song.type === 'qq')) return 'qq';
-			return 'netease';
+			if (song && (song.provider === 'spt' || song.source === 'spt' || song.type === 'spt')) return 'spt';
+			return 'ytm';
 		}
 		function songSourceTagHtml(song) {
 			var key = songProviderKey(song);
-			var label = key === 'qq' ? 'QQ' : 'NE';
+			var label = key === 'spt' ? 'Spotify' : 'Youtube Music';
 			return '<span class="tag-source ' + key + '">' + label + '</span>';
 		}
 		function searchResultMetaText(song) {
 			var bits = [];
 			if (song.artist) bits.push(song.artist);
 			if (song.album) bits.push(song.album);
-			if (songProviderKey(song) === 'qq' && !song.playable) bits.push('QQ 播放需会话/授权');
+			if (songProviderKey(song) === 'spt' && !song.playable) bits.push('Spotify 播放需会话/授权');
 			return bits.join('  ·  ') || songSourceLabel(song);
 		}
 		function searchResultMetaHtml(song, index) {
@@ -27027,7 +27043,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			var artist = String(song.artist || '').trim();
 			var bits = [];
 			if (song.album) bits.push(song.album);
-			if (songProviderKey(song) === 'qq' && !song.playable) bits.push('QQ 播放需会话/授权');
+			if (songProviderKey(song) === 'spt' && !song.playable) bits.push('Spotify 播放需会话/授权');
 			var tail = bits.length ? (' · ' + escHtml(bits.join('  ·  '))) : '';
 			if (!artist) return escHtml(searchResultMetaText(song));
 			return '<button class="search-artist-link" type="button" onclick="event.stopPropagation();openSearchResultArtist(' + index + ')">' + escHtml(artist) + '</button>' + tail;
@@ -27147,17 +27163,17 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			return out.slice(0, limit);
 		}
 		async function fetchMusicSearchResults(q, mode) {
-			if (mode === 'qq') {
-				var qqOnly = await apiJson('/api/qq/search?keywords=' + encodeURIComponent(q) + '&limit=12');
+			if (mode === 'spt') {
+				var qqOnly = await apiJson('/api/spt/search?keywords=' + encodeURIComponent(q) + '&limit=12');
 				return mergeSongSearchResults([], qqOnly.songs || [], 18, q);
 			}
-			if (mode === 'netease') {
+			if (mode === 'ytm') {
 				var neOnly = await apiJson('/api/search?keywords=' + encodeURIComponent(q) + '&limit=18');
 				return mergeSongSearchResults(neOnly.songs || [], [], 18, q);
 			}
 			var result = await Promise.allSettled([
 				apiJson('/api/search?keywords=' + encodeURIComponent(q) + '&limit=14'),
-				apiJson('/api/qq/search?keywords=' + encodeURIComponent(q) + '&limit=12')
+				apiJson('/api/spt/search?keywords=' + encodeURIComponent(q) + '&limit=12')
 			]);
 			var neteaseSongs = result[0].status === 'fulfilled' ? ((result[0].value && result[0].value.songs) || []) : [];
 			var qqSongs = result[1].status === 'fulfilled' ? ((result[1].value && result[1].value.songs) || []) : [];
@@ -27737,8 +27753,8 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			var artist = artistNameParts(song)[0] || '';
 			var query = [song.name || song.title || '', song.artist || artist].filter(Boolean).join(' ').trim();
 			if (!query) return null;
-			var url = target === 'qq'
-				? '/api/qq/search?keywords=' + encodeURIComponent(query) + '&limit=8'
+			var url = target === 'spt'
+				? '/api/spt/search?keywords=' + encodeURIComponent(query) + '&limit=8'
 				: '/api/search?keywords=' + encodeURIComponent(query) + '&limit=12';
 			var data = await apiJson(url);
 			var list = data && (data.songs || data.result || []);
@@ -28008,6 +28024,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 					applyVolumeToAudio();
 					var proxyAudioUrl = '/api/audio?url=' + encodeURIComponent(data.url);
 					audio.src = proxyAudioUrl;
+					audio.crossOrigin = "anonymous"; // BẮT BUỘC có dòng này để Web Audio API hoạt động
 					updatePlaybackProgressUi();
 					audio.onended = function () {
 						if (token !== trackSwitchToken) return;
@@ -28548,8 +28565,8 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		}
 		async function fetchLyricForLocal(song, token) {
 			if (!song || !song.name) return;
-			const query = (song.artist && song.artist !== '本地文件') 
-				? `${song.name} ${song.artist}` 
+			const query = (song.artist && song.artist !== '本地文件')
+				? `${song.name} ${song.artist}`
 				: song.name;
 
 			console.log(`[Auto-Lyric] Searching for: ${query}`);
@@ -29165,8 +29182,8 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				return;
 			}
 			function playlistCardHtml(pl) {
-				var provider = pl.provider === 'qq' ? 'qq' : 'netease';
-				var providerLabel = provider === 'qq' ? 'QQ' : 'NE';
+				var provider = pl.provider === 'qq' ? 'qq' : 'ytm';
+				var providerLabel = provider === 'qq' ? 'QQ' : 'Youtube Music';
 				var thumb = pl.cover ? (provider === 'qq' ? pl.cover : (pl.cover + '?param=88y88')) : '';
 				var imgTag = thumb ? '<img src="' + thumb + '" alt="" loading="lazy" decoding="async" onerror="this.style.opacity=0.2">' : '<div style="width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,.06);flex-shrink:0"></div>';
 				var key = playlistPanelKey(provider, pl.id);
@@ -29513,148 +29530,148 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		//  文件拖放
 		// ============================================================
 		document.getElementById('file-input').addEventListener('change', function (e) { handleFiles(e.target.files); e.target.value = ''; });
-	function handleFiles(files) {
-		var audioFile = null, imgFile = null;
-		for (var i = 0; i < files.length; i++) {
-			var f = files[i];
-			if (f.type.startsWith('audio/') || /\.(mp3|flac|wav|ogg|m4a)$/i.test(f.name)) audioFile = f;
-			else if (f.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(f.name)) imgFile = f;
-		}
-
-		if (audioFile) {
-			// Sử dụng jsmediatags để đọc metadata
-			window.jsmediatags.read(audioFile, {
-				onSuccess: function(tag) {
-					var tags = tag.tags;
-					var title = tags.title || audioFile.name.replace(/\.[^.]+$/, '');
-					var artist = tags.artist || '本地文件';
-					var embeddedCover = null;
-
-					// Xử lý ảnh bìa nhúng trong file nhạc (nếu có và nếu người dùng không kéo kèm file ảnh rời)
-					if (tags.picture && !imgFile) {
-						var data = tags.picture.data;
-						var format = tags.picture.format;
-						var base64String = "";
-						for (var j = 0; j < data.length; j++) {
-							base64String += String.fromCharCode(data[j]);
-						}
-						embeddedCover = "data:" + format + ";base64," + window.btoa(base64String);
-					}
-
-					processLocalAudio(audioFile, title, artist, embeddedCover, imgFile);
-				},
-				onError: function(error) {
-					console.warn('Could not read ID3 tags:', error.type, error.info);
-					// Fallback nếu lỗi parse
-					var title = audioFile.name.replace(/\.[^.]+$/, '');
-					processLocalAudio(audioFile, title, '本地文件', null, imgFile);
-				}
-			});
-		} else if (imgFile) {
-			// Nếu chỉ kéo ảnh vào mà không có nhạc
-			loadCoverFromFile(imgFile, null);
-		}
-	}
-
-	// Hàm phụ để xử lý logic play sau khi đã parse xong tag
-	function processLocalAudio(audioFile, title, artist, embeddedCover, imgFile) {
-		finalizeListenSession(false);
-		var url = URL.createObjectURL(audioFile);
-		
-		trackSwitchToken++;
-		var token = trackSwitchToken;
-		var firstVisualPlay = !firstPlayDone;
-
-		if (localBeatAnalysis.active) cancelLocalBeatAnalysis();
-		closeGsapModal(document.getElementById('local-beat-modal'));
-		cancelBeatAnalysisTimer();
-		cancelDjBeatAnalysisTimer();
-		beatMapToken++;
-		djBeatMapToken++;
-		setDjModeActive(false);
-		currentBeatMap = null;
-		resetDjBeatMapState();
-		beatMapNextIdx = 0;
-		resetAudioVisualState();
-		resetBeatCameraSync(0);
-		currentIdx = -1;
-
-		currentLocalSong = hydrateCustomCover({
-			type: 'local',
-			name: title,
-			artist: artist,
-			localKey: [audioFile.name, audioFile.size || 0, audioFile.lastModified || 0].join(':'),
-			localUrl: url,
-			duration: 0,
-			cover: embeddedCover || '' // Lưu ảnh bìa nhúng vào object
-		});
-
-		updateCustomCoverButton();
-		document.getElementById('hint').classList.add('hidden');
-		document.getElementById('thumb-title').textContent = title;
-		document.getElementById('thumb-artist').textContent = artist;
-		updateControlTrackInfo({ name: title, artist: artist });
-		if (typeof updateMediaSession === 'function') {
-    		updateMediaSession(currentLocalSong); 
-		}
-		document.getElementById('thumb-wrap').classList.add('visible');
-		
-		safeRenderQueuePanel('play-local-file');
-		safeShelfRebuild('play-local-file', true);
-		suppressShelfPreviewForPlaybackSwitch();
-
-		if (firstVisualPlay) { 
-			firstPlayDone = true; 
-			tweenParticleAlpha(uniforms.uAlpha.value || 0, 1.0, 260); 
-		}
-
-		if (!audio) { audio = new Audio(); audio.crossOrigin = 'anonymous'; }
-		else audio.pause();
-
-		bindPlaybackProgressEvents(audio);
-		applyVolumeToAudio();
-		audio.src = url;
-		updatePlaybackProgressUi();
-		
-		audio.onended = function () { finalizeListenSession(true); playing = false; setPlayIcon(false); };
-		audio.onloadedmetadata = function () {
-			if (currentLocalSong && currentLocalSong.localUrl === url) {
-				currentLocalSong.duration = audio.duration;
-				if (lyricSourceMode === 'custom') applyCustomLyricState(currentLocalSong, true);
+		function handleFiles(files) {
+			var audioFile = null, imgFile = null;
+			for (var i = 0; i < files.length; i++) {
+				var f = files[i];
+				if (f.type.startsWith('audio/') || /\.(mp3|flac|wav|ogg|m4a)$/i.test(f.name)) audioFile = f;
+				else if (f.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(f.name)) imgFile = f;
 			}
-		};
 
-		// Khởi tạo trạng thái trống trước
-		var localLyricLines = withLyricFallback([]);
-		setOriginalLyricsState(localLyricLines, false, 'fallback');
-		applyPreferredLyricsForCurrent(true);
+			if (audioFile) {
+				// Sử dụng jsmediatags để đọc metadata
+				window.jsmediatags.read(audioFile, {
+					onSuccess: function (tag) {
+						var tags = tag.tags;
+						var title = tags.title || audioFile.name.replace(/\.[^.]+$/, '');
+						var artist = tags.artist || '本地文件';
+						var embeddedCover = null;
 
-		// Tự động đi tìm lời bài hát từ server
-		if (title && title !== audioFile.name) {
-			fetchLyricForLocal(currentLocalSong, token);
+						// Xử lý ảnh bìa nhúng trong file nhạc (nếu có và nếu người dùng không kéo kèm file ảnh rời)
+						if (tags.picture && !imgFile) {
+							var data = tags.picture.data;
+							var format = tags.picture.format;
+							var base64String = "";
+							for (var j = 0; j < data.length; j++) {
+								base64String += String.fromCharCode(data[j]);
+							}
+							embeddedCover = "data:" + format + ";base64," + window.btoa(base64String);
+						}
+
+						processLocalAudio(audioFile, title, artist, embeddedCover, imgFile);
+					},
+					onError: function (error) {
+						console.warn('Could not read ID3 tags:', error.type, error.info);
+						// Fallback nếu lỗi parse
+						var title = audioFile.name.replace(/\.[^.]+$/, '');
+						processLocalAudio(audioFile, title, '本地文件', null, imgFile);
+					}
+				});
+			} else if (imgFile) {
+				// Nếu chỉ kéo ảnh vào mà không có nhạc
+				loadCoverFromFile(imgFile, null);
+			}
 		}
-		document.getElementById('trial-banner').classList.remove('show');
-		
-		audio.load();
-		playAudio().then(function (ok) {
-			if (ok && currentLocalSong && currentLocalSong.localUrl === url) beginListenSession(currentLocalSong, null);
-		});
 
-		setTimeout(function () {
-			if (currentLocalSong && currentLocalSong.localUrl === url) prepareLocalBeatAnalysis(currentLocalSong, url);
-		}, 520);
+		// Hàm phụ để xử lý logic play sau khi đã parse xong tag
+		function processLocalAudio(audioFile, title, artist, embeddedCover, imgFile) {
+			finalizeListenSession(false);
+			var url = URL.createObjectURL(audioFile);
 
-		// Ưu tiên: File ảnh rời > Ảnh bìa nhúng ID3 > Trống
-		var localCoverOpts = { trackToken: token, deferHeavy: firstVisualPlay, delay: firstVisualPlay ? 60 : 0, timeout: firstVisualPlay ? 300 : 180 };
-		
-		if (imgFile) {
-			loadCoverFromFile(imgFile, localCoverOpts);
-		} else if (embeddedCover) {
-			applyCoverDataUrl(embeddedCover, localCoverOpts);
-		} else {
-			loadCoverFromUrl('', localCoverOpts);
+			trackSwitchToken++;
+			var token = trackSwitchToken;
+			var firstVisualPlay = !firstPlayDone;
+
+			if (localBeatAnalysis.active) cancelLocalBeatAnalysis();
+			closeGsapModal(document.getElementById('local-beat-modal'));
+			cancelBeatAnalysisTimer();
+			cancelDjBeatAnalysisTimer();
+			beatMapToken++;
+			djBeatMapToken++;
+			setDjModeActive(false);
+			currentBeatMap = null;
+			resetDjBeatMapState();
+			beatMapNextIdx = 0;
+			resetAudioVisualState();
+			resetBeatCameraSync(0);
+			currentIdx = -1;
+
+			currentLocalSong = hydrateCustomCover({
+				type: 'local',
+				name: title,
+				artist: artist,
+				localKey: [audioFile.name, audioFile.size || 0, audioFile.lastModified || 0].join(':'),
+				localUrl: url,
+				duration: 0,
+				cover: embeddedCover || '' // Lưu ảnh bìa nhúng vào object
+			});
+
+			updateCustomCoverButton();
+			document.getElementById('hint').classList.add('hidden');
+			document.getElementById('thumb-title').textContent = title;
+			document.getElementById('thumb-artist').textContent = artist;
+			updateControlTrackInfo({ name: title, artist: artist });
+			if (typeof updateMediaSession === 'function') {
+				updateMediaSession(currentLocalSong);
+			}
+			document.getElementById('thumb-wrap').classList.add('visible');
+
+			safeRenderQueuePanel('play-local-file');
+			safeShelfRebuild('play-local-file', true);
+			suppressShelfPreviewForPlaybackSwitch();
+
+			if (firstVisualPlay) {
+				firstPlayDone = true;
+				tweenParticleAlpha(uniforms.uAlpha.value || 0, 1.0, 260);
+			}
+
+			if (!audio) { audio = new Audio(); audio.crossOrigin = 'anonymous'; }
+			else audio.pause();
+
+			bindPlaybackProgressEvents(audio);
+			applyVolumeToAudio();
+			audio.src = url;
+			updatePlaybackProgressUi();
+
+			audio.onended = function () { finalizeListenSession(true); playing = false; setPlayIcon(false); };
+			audio.onloadedmetadata = function () {
+				if (currentLocalSong && currentLocalSong.localUrl === url) {
+					currentLocalSong.duration = audio.duration;
+					if (lyricSourceMode === 'custom') applyCustomLyricState(currentLocalSong, true);
+				}
+			};
+
+			// Khởi tạo trạng thái trống trước
+			var localLyricLines = withLyricFallback([]);
+			setOriginalLyricsState(localLyricLines, false, 'fallback');
+			applyPreferredLyricsForCurrent(true);
+
+			// Tự động đi tìm lời bài hát từ server
+			if (title && title !== audioFile.name) {
+				fetchLyricForLocal(currentLocalSong, token);
+			}
+			document.getElementById('trial-banner').classList.remove('show');
+
+			audio.load();
+			playAudio().then(function (ok) {
+				if (ok && currentLocalSong && currentLocalSong.localUrl === url) beginListenSession(currentLocalSong, null);
+			});
+
+			setTimeout(function () {
+				if (currentLocalSong && currentLocalSong.localUrl === url) prepareLocalBeatAnalysis(currentLocalSong, url);
+			}, 520);
+
+			// Ưu tiên: File ảnh rời > Ảnh bìa nhúng ID3 > Trống
+			var localCoverOpts = { trackToken: token, deferHeavy: firstVisualPlay, delay: firstVisualPlay ? 60 : 0, timeout: firstVisualPlay ? 300 : 180 };
+
+			if (imgFile) {
+				loadCoverFromFile(imgFile, localCoverOpts);
+			} else if (embeddedCover) {
+				applyCoverDataUrl(embeddedCover, localCoverOpts);
+			} else {
+				loadCoverFromUrl('', localCoverOpts);
+			}
 		}
-	}
 		var dropOv = document.getElementById('drop-overlay'), dragCount = 0;
 		document.addEventListener('dragenter', function (e) { e.preventDefault(); dragCount++; dropOv.classList.add('show'); });
 		document.addEventListener('dragleave', function (e) { e.preventDefault(); dragCount--; if (dragCount <= 0) { dragCount = 0; dropOv.classList.remove('show'); } });
@@ -31333,60 +31350,60 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			var overlayGrid = document.getElementById('t-cinema');
 			overlayGrid = overlayGrid && overlayGrid.closest('.fx-toggle-grid');
 			setFxSectionBeforeNode(overlayGrid, 'Camera & Overlays');
-            setFxSectionBefore('preset-grid', 'Presets & Archives');
-            setFxSectionBefore('user-archive-grid', 'User Archive');
-            setFxSectionBefore('ui-accent-picker', 'UI & Background');
-            setFxSectionBefore('fx-intensity', 'Visual Base');
-            setFxSectionBefore('fx-lyricglow', 'Lyric Glow Intensity');
-            setFxSectionBefore('lyric-color-grid', 'Text Color');
-            setFxSectionBefore('lyric-highlight-picker', 'Karaoke Highlight');
-            setFxSectionBefore('lyric-glow-row', 'Lyric Glow Color');
-            setFxSectionBefore('lyric-source-seg', 'Lyric Source');
-            setFxSectionBefore('lyric-font-grid', 'Font & Spacing');
-            setFxSectionBefore('fx-lyricscale', 'Position & Angle');
-            setFxSectionBefore('fx-desktoplyricssize', 'Desktop Lyrics');
-            setFxSectionBefore('desktop-lyrics-fps-seg', 'Desktop Lyrics FPS');
-            setFxSectionBefore('shelf-seg', '3D Playlist Shelf');
-            setFxSectionBefore('shelf-camera-seg', 'Shelf Camera');
-            setFxSectionBefore('shelf-presence-seg', 'Shelf Visibility');
-            setFxSectionBefore('shelf-accent-picker', 'Shelf Appearance');
-            setFxSectionBefore('fx-shelfsize', 'Shelf Parameters');
-            setFxSectionBefore('cam-seg', 'Camera Interaction');
-            setFxSectionBefore('fx-point', 'Advanced Particle Settings');
-            setFxSliderLabel('fx-intensity', 'Rhythmic intensity');
-            setFxSliderLabel('fx-depth', 'Depth of Field');
-            setFxSliderLabel('fx-coverres', 'Cover clarity');
-            setFxSliderLabel('fx-cineshake', 'Cinematic Camera Shake');
-            setFxSliderLabel('fx-lyricglow', 'Glow Strength');
-            setFxSliderLabel('fx-bgopacity', 'Background transparency');
-            setFxSliderLabel('fx-glassaberration', 'Glass Chromatic Aberration');
-            setFxSliderLabel('fx-lyricspacing', 'Letter Spacing');
-            setFxSliderLabel('fx-lyriclineheight', 'Line Height');
-            setFxSliderLabel('fx-lyricweight', 'Font Weight');
-            setFxSliderLabel('fx-lyricscale', 'Lyric Size');
-            setFxSliderLabel('fx-lyricx', 'Horizontal Position (X)');
-            setFxSliderLabel('fx-lyricy', 'Vertical Position (Y)');
-            setFxSliderLabel('fx-lyricz', 'Depth Position (Z)');
-            setFxSliderLabel('fx-lyrictiltx', 'Pitch Rotation (X)');
-            setFxSliderLabel('fx-lyrictilty', 'Yaw Rotation (Y)');
-            setFxSliderLabel('fx-desktoplyricssize', 'Desktop Lyric Size');
-            setFxSliderLabel('fx-desktoplyricsopacity', 'Desktop Lyric Opacity');
-            setFxSliderLabel('fx-desktoplyricsy', 'Desktop Lyric Height');
-            setFxSliderLabel('fx-wallpaperopacity', 'Wallpaper Opacity');
-            setFxSliderLabel('fx-shelfsize', 'Shelf Size');
-            setFxSliderLabel('fx-shelfx', 'Horizontal Position (X)');
-            setFxSliderLabel('fx-shelfy', 'Vertical Position (Y)');
-            setFxSliderLabel('fx-shelfz', 'Depth Position (Z)');
-            setFxSliderLabel('fx-shelfangle', 'Tilt Angle');
-            setFxSliderLabel('fx-shelfopacity', 'Overall Opacity');
-            setFxSliderLabel('fx-shelfbgalpha', 'Background transparency');
-            setFxSliderLabel('fx-point', 'Particle Size');
-            setFxSliderLabel('fx-speed', 'Motion Speed');
-            setFxSliderLabel('fx-twist', 'Particle Distortion');
-            setFxSliderLabel('fx-color', 'Color Tension');
-            setFxSliderLabel('fx-bloom', 'Bloom Intensity');
-            setFxSliderLabel('fx-scatter', 'Dispersion / Scatter');
-            setFxSliderLabel('fx-bgfade', 'Background Dimming');
+			setFxSectionBefore('preset-grid', 'Presets & Archives');
+			setFxSectionBefore('user-archive-grid', 'User Archive');
+			setFxSectionBefore('ui-accent-picker', 'UI & Background');
+			setFxSectionBefore('fx-intensity', 'Visual Base');
+			setFxSectionBefore('fx-lyricglow', 'Lyric Glow Intensity');
+			setFxSectionBefore('lyric-color-grid', 'Text Color');
+			setFxSectionBefore('lyric-highlight-picker', 'Karaoke Highlight');
+			setFxSectionBefore('lyric-glow-row', 'Lyric Glow Color');
+			setFxSectionBefore('lyric-source-seg', 'Lyric Source');
+			setFxSectionBefore('lyric-font-grid', 'Font & Spacing');
+			setFxSectionBefore('fx-lyricscale', 'Position & Angle');
+			setFxSectionBefore('fx-desktoplyricssize', 'Desktop Lyrics');
+			setFxSectionBefore('desktop-lyrics-fps-seg', 'Desktop Lyrics FPS');
+			setFxSectionBefore('shelf-seg', '3D Playlist Shelf');
+			setFxSectionBefore('shelf-camera-seg', 'Shelf Camera');
+			setFxSectionBefore('shelf-presence-seg', 'Shelf Visibility');
+			setFxSectionBefore('shelf-accent-picker', 'Shelf Appearance');
+			setFxSectionBefore('fx-shelfsize', 'Shelf Parameters');
+			setFxSectionBefore('cam-seg', 'Camera Interaction');
+			setFxSectionBefore('fx-point', 'Advanced Particle Settings');
+			setFxSliderLabel('fx-intensity', 'Rhythmic intensity');
+			setFxSliderLabel('fx-depth', 'Depth of Field');
+			setFxSliderLabel('fx-coverres', 'Cover clarity');
+			setFxSliderLabel('fx-cineshake', 'Cinematic Camera Shake');
+			setFxSliderLabel('fx-lyricglow', 'Glow Strength');
+			setFxSliderLabel('fx-bgopacity', 'Background transparency');
+			setFxSliderLabel('fx-glassaberration', 'Glass Chromatic Aberration');
+			setFxSliderLabel('fx-lyricspacing', 'Letter Spacing');
+			setFxSliderLabel('fx-lyriclineheight', 'Line Height');
+			setFxSliderLabel('fx-lyricweight', 'Font Weight');
+			setFxSliderLabel('fx-lyricscale', 'Lyric Size');
+			setFxSliderLabel('fx-lyricx', 'Horizontal Position (X)');
+			setFxSliderLabel('fx-lyricy', 'Vertical Position (Y)');
+			setFxSliderLabel('fx-lyricz', 'Depth Position (Z)');
+			setFxSliderLabel('fx-lyrictiltx', 'Pitch Rotation (X)');
+			setFxSliderLabel('fx-lyrictilty', 'Yaw Rotation (Y)');
+			setFxSliderLabel('fx-desktoplyricssize', 'Desktop Lyric Size');
+			setFxSliderLabel('fx-desktoplyricsopacity', 'Desktop Lyric Opacity');
+			setFxSliderLabel('fx-desktoplyricsy', 'Desktop Lyric Height');
+			setFxSliderLabel('fx-wallpaperopacity', 'Wallpaper Opacity');
+			setFxSliderLabel('fx-shelfsize', 'Shelf Size');
+			setFxSliderLabel('fx-shelfx', 'Horizontal Position (X)');
+			setFxSliderLabel('fx-shelfy', 'Vertical Position (Y)');
+			setFxSliderLabel('fx-shelfz', 'Depth Position (Z)');
+			setFxSliderLabel('fx-shelfangle', 'Tilt Angle');
+			setFxSliderLabel('fx-shelfopacity', 'Overall Opacity');
+			setFxSliderLabel('fx-shelfbgalpha', 'Background transparency');
+			setFxSliderLabel('fx-point', 'Particle Size');
+			setFxSliderLabel('fx-speed', 'Motion Speed');
+			setFxSliderLabel('fx-twist', 'Particle Distortion');
+			setFxSliderLabel('fx-color', 'Color Tension');
+			setFxSliderLabel('fx-bloom', 'Bloom Intensity');
+			setFxSliderLabel('fx-scatter', 'Dispersion / Scatter');
+			setFxSliderLabel('fx-bgfade', 'Background Dimming');
 		}
 
 		function getHotkeyDefaults() {
@@ -32904,7 +32921,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 
 				// Cập nhật object trạng thái chính
 				loginStatus.loggedIn = !!(info && info.loggedIn);
-				
+
 				// QUAN TRỌNG: Cập nhật cho Home Discover
 				homeDiscoverState.loggedIn = loginStatus.loggedIn;
 
@@ -32989,31 +33006,31 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			if (!silent && document.getElementById('login-modal').classList.contains('show')) refreshQr();
 		}
 		function updateLoginProviderUi() {
-            var title = document.getElementById('login-modal-title');
-            var desc = document.getElementById('login-modal-desc');
-            
-            // Cập nhật title và desc thông báo tính năng chưa implemented
-            if (title) {
-                title.textContent = 'Cloud Sync Coming Soon';
-            }
-            if (desc) {
-                desc.innerHTML = 'Account login and library synchronization (Playlists, Likes, and Podcasts) are currently <b>under development</b>.<br>' +
-                                 'Stay tuned! You can still stream and enjoy full visual effects without logging in.';
-            }
+			var title = document.getElementById('login-modal-title');
+			var desc = document.getElementById('login-modal-desc');
 
-            // An toàn dọn dẹp hoặc ẩn các phần tử cũ nếu chúng vẫn tồn tại tạm thời trong DOM
-            var shell = document.getElementById('qr-shell');
-            var st = document.getElementById('qr-status');
-            var refreshBtn = document.getElementById('refresh-qr-btn');
-            var qqPanel = document.getElementById('qq-cookie-panel');
-            var qqCookieToggle = document.getElementById('qq-cookie-toggle-btn');
+			// Cập nhật title và desc thông báo tính năng chưa implemented
+			if (title) {
+				title.textContent = 'Cloud Sync Coming Soon';
+			}
+			if (desc) {
+				desc.innerHTML = 'Account login and library synchronization (Playlists, Likes, and Podcasts) are currently <b>under development</b>.<br>' +
+					'Stay tuned! You can still stream and enjoy full visual effects without logging in.';
+			}
 
-            if (shell) shell.style.display = 'none';
-            if (st) st.style.display = 'none';
-            if (refreshBtn) refreshBtn.style.display = 'none';
-            if (qqPanel) qqPanel.style.display = 'none';
-            if (qqCookieToggle) qqCookieToggle.style.display = 'none';
-        }
+			// An toàn dọn dẹp hoặc ẩn các phần tử cũ nếu chúng vẫn tồn tại tạm thời trong DOM
+			var shell = document.getElementById('qr-shell');
+			var st = document.getElementById('qr-status');
+			var refreshBtn = document.getElementById('refresh-qr-btn');
+			var qqPanel = document.getElementById('qq-cookie-panel');
+			var qqCookieToggle = document.getElementById('qq-cookie-toggle-btn');
+
+			if (shell) shell.style.display = 'none';
+			if (st) st.style.display = 'none';
+			if (refreshBtn) refreshBtn.style.display = 'none';
+			if (qqPanel) qqPanel.style.display = 'none';
+			if (qqCookieToggle) qqCookieToggle.style.display = 'none';
+		}
 		async function refreshQr() {
 			stopQrPoll();
 			updateLoginProviderUi();
@@ -33963,76 +33980,76 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			if (toastTimer) clearTimeout(toastTimer);
 			toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600);
 		}
-var visualGuideSteps = [
-            {
-                target: 'stage',
-                kicker: '01 / Welcome',
-                title: 'Mineradio is a visual-driven music player',
-                body: 'It\'s way more than just a playlist page. Once you search or import a track, the album cover, lyrics, particles, and camera work will all groove dynamically to the beat.'
-            },
-            {
-                selector: '#search-box',
-                kicker: '02 / Play',
-                title: 'Start by searching or importing',
-                body: 'Type in a song, artist, or keywords to get spinning. Got local music? Use the import shortcut to drop your own tracks right onto the stage.'
-            },
-            {
-                selector: '#bottom-bar',
-                kicker: '03 / Control',
-                title: 'Meet your playback control bar',
-                body: 'Playback, track skipping, progress, queue, and lyrics are all packed neatly at the bottom. Feel free to use it just like any regular music player first.'
-            },
-            {
-                target: 'shelf',
-                kicker: '04 / Visual',
-                title: 'Next-level visuals around the stage',
-                body: 'The 3D Playlist Shelf on the right and the DIY Custom Mode are your gateways to advanced FX. Throw on a track first, then start tweaking the visuals at your own pace.'
-            },
-            {
-                selector: '#diy-mode-btn',
-                kicker: '05 / DIY',
-                title: 'Unleash advanced features in DIY Mode',
-                body: 'This is where the magic happens. The visual console, cover/upload manager, lyric customizer, audio quality toggles, and advanced panels will all open up here.'
-            }
-        ];
-        var visualGuideStepsDiy = [
-            {
-                selector: '#diy-mode-btn',
-                kicker: '01 / DIY',
-                title: 'DIY Pro Mode Activated',
-                body: 'You can switch back to the default layout anytime. DIY Mode unlocks the full control console, upload options, visual customizers, and advanced parameters.'
-            },
-            {
-                selector: '#search-box',
-                kicker: '02 / Search',
-                title: 'Expanded search sources & imports',
-                body: 'The top search bar now supports switching between multiple streaming sources, plus upload links for tracks and covers are now fully visible.'
-            },
-            {
-                selector: '#playlist-panel',
-                kicker: '03 / Library',
-                title: 'Full playlists & queue on the left',
-                body: 'Hover near the left edge to expand the Playlist & Queue panel. Manage your queue, custom playlists, and podcasts all in one place.'
-            },
-            {
-                selector: '#fx-panel',
-                kicker: '04 / Visual Lab',
-                title: 'Visual control console on the right',
-                body: 'Hover near the bottom-right or click the visual button to fine-tune particles, lyrics, camera paths, the 3D shelf, and deeper visual FX.'
-            },
-            {
-                selector: '#quality-control',
-                kicker: '05 / Controls',
-                title: 'Advanced playback tools unlocked',
-                body: 'Audio quality settings, playback order, favorites, lyric engine sources, and pro toggles are now fully displayed in the control bar.'
-            },
-            {
-                target: 'shelf',
-                kicker: '06 / Shelf',
-                title: 'Interactive 3D Playlist Shelf',
-                body: 'The 3D Playlist Shelf on the right will fade in smoothly when you approach it. Click a card to inspect the playlist, or hit its mini play button to instantly stream the entire shelf.'
-            }
-        ];
+		var visualGuideSteps = [
+			{
+				target: 'stage',
+				kicker: '01 / Welcome',
+				title: 'Mineradio is a visual-driven music player',
+				body: 'It\'s way more than just a playlist page. Once you search or import a track, the album cover, lyrics, particles, and camera work will all groove dynamically to the beat.'
+			},
+			{
+				selector: '#search-box',
+				kicker: '02 / Play',
+				title: 'Start by searching or importing',
+				body: 'Type in a song, artist, or keywords to get spinning. Got local music? Use the import shortcut to drop your own tracks right onto the stage.'
+			},
+			{
+				selector: '#bottom-bar',
+				kicker: '03 / Control',
+				title: 'Meet your playback control bar',
+				body: 'Playback, track skipping, progress, queue, and lyrics are all packed neatly at the bottom. Feel free to use it just like any regular music player first.'
+			},
+			{
+				target: 'shelf',
+				kicker: '04 / Visual',
+				title: 'Next-level visuals around the stage',
+				body: 'The 3D Playlist Shelf on the right and the DIY Custom Mode are your gateways to advanced FX. Throw on a track first, then start tweaking the visuals at your own pace.'
+			},
+			{
+				selector: '#diy-mode-btn',
+				kicker: '05 / DIY',
+				title: 'Unleash advanced features in DIY Mode',
+				body: 'This is where the magic happens. The visual console, cover/upload manager, lyric customizer, audio quality toggles, and advanced panels will all open up here.'
+			}
+		];
+		var visualGuideStepsDiy = [
+			{
+				selector: '#diy-mode-btn',
+				kicker: '01 / DIY',
+				title: 'DIY Pro Mode Activated',
+				body: 'You can switch back to the default layout anytime. DIY Mode unlocks the full control console, upload options, visual customizers, and advanced parameters.'
+			},
+			{
+				selector: '#search-box',
+				kicker: '02 / Search',
+				title: 'Expanded search sources & imports',
+				body: 'The top search bar now supports switching between multiple streaming sources, plus upload links for tracks and covers are now fully visible.'
+			},
+			{
+				selector: '#playlist-panel',
+				kicker: '03 / Library',
+				title: 'Full playlists & queue on the left',
+				body: 'Hover near the left edge to expand the Playlist & Queue panel. Manage your queue, custom playlists, and podcasts all in one place.'
+			},
+			{
+				selector: '#fx-panel',
+				kicker: '04 / Visual Lab',
+				title: 'Visual control console on the right',
+				body: 'Hover near the bottom-right or click the visual button to fine-tune particles, lyrics, camera paths, the 3D shelf, and deeper visual FX.'
+			},
+			{
+				selector: '#quality-control',
+				kicker: '05 / Controls',
+				title: 'Advanced playback tools unlocked',
+				body: 'Audio quality settings, playback order, favorites, lyric engine sources, and pro toggles are now fully displayed in the control bar.'
+			},
+			{
+				target: 'shelf',
+				kicker: '06 / Shelf',
+				title: 'Interactive 3D Playlist Shelf',
+				body: 'The 3D Playlist Shelf on the right will fade in smoothly when you approach it. Click a card to inspect the playlist, or hit its mini play button to instantly stream the entire shelf.'
+			}
+		];
 		function activeVisualGuideSteps() {
 			return diyPlayerMode ? visualGuideStepsDiy : visualGuideSteps;
 		}
@@ -35627,16 +35644,18 @@ var visualGuideSteps = [
 			s.setAttribute('aria-label', 'Click to enter Mineradio');
 		}
 
-		document.addEventListener('DOMContentLoaded', function () {
+		document.addEventListener('DOMContentLoaded', async function () { // Thêm async ở đây
 			var s = document.getElementById('splash');
 			if (!s) return;
 			markAppPerf('dom-content-loaded');
 			armSplashSoundFallback();
 			prewarmHomeWallpaperPreview();
+
 			function requestSplashEnter() {
 				playMineradioIntroSound();
 				if (splashReadyToEnter) dismissSplash();
 			}
+
 			s.addEventListener('click', requestSplashEnter);
 			document.addEventListener('keydown', function (e) {
 				if (!document.body.classList.contains('splash-active')) return;
@@ -35645,13 +35664,20 @@ var visualGuideSteps = [
 					requestSplashEnter();
 				}
 			});
-			if (reduceSplashMotion) {
-				s.classList.add('reduce-motion');
-				splashTimer = setTimeout(markSplashReadyToEnter, 900);
-				return;
-			}
+
 			playMineradioIntroSound();
-			splashTimer = setTimeout(markSplashReadyToEnter, 5000);
+			showBeatChip("Logging in to Youtube...");
+			await new Promise(resolve => setTimeout(resolve, 5000));
+			await initSavedYoutubeLogin();
+			hideBeatChip();
+			if (loginStatus.loggedIn) {
+				showToast("YouTube Music Connected");
+			} else {
+				showToast("Guest Mode Active");
+			}
+
+			// 3. Sau khi xong mới cho hiện nút Enter
+			markSplashReadyToEnter();
 		});
 
 		var desktopOverlayPushState = {
@@ -36095,6 +36121,64 @@ var visualGuideSteps = [
 		function isMainSceneCoveredBySplash() {
 			return document.body.classList.contains('splash-active') && !document.body.classList.contains('splash-revealing');
 		}
+		// Hàm để ép buộc tải lại lyric từ server (LRCLIB) cho bài đang phát
+		async function fetchLyricForCurrent() {
+			const song = currentLyricSong();
+			if (!song) {
+				showToast("No song playing");
+				return;
+			}
+			showToast("Searching online lyrics...");
+			toggleLyricsPanel(true); // Đảm bảo layer lyric đang bật
+
+			// Reset về mode original và gọi hàm fetch
+			lyricSourceMode = 'original';
+			trackSwitchToken++; // Tăng token để tránh xung đột các lần fetch cũ
+			if (song.type === 'local') {
+				await fetchLyricForLocal(song, trackSwitchToken);
+			} else {
+				await fetchLyric(song, trackSwitchToken);
+			}
+		}
+
+		// Hàm xử lý khi người dùng chọn file .lrc từ máy tính
+		function handleLocalLrcUpload(event) {
+			const file = event.target.files[0];
+			if (!file) return;
+
+			const reader = new FileReader();
+			reader.onload = function (e) {
+				const content = e.target.result;
+				const lines = parseLyricText(content);
+
+				if (lines.length === 0 || lines.every(l => isNoLyricText(l.text))) {
+					showToast("Invalid or empty LRC file");
+					return;
+				}
+
+				// Áp dụng lyric từ file local
+				lyricSourceMode = 'custom'; // Đánh dấu là nguồn tùy chỉnh
+				setOriginalLyricsState(lines, false, 'local-file');
+				applyLyricsState(lines, false, 'local-file');
+
+				// Bật hiển thị lyric nếu đang tắt
+				if (!fx.particleLyrics) toggleLyricsPanel(true);
+
+				showToast("Local lyrics applied: " + file.name);
+
+				// Lưu vào bộ nhớ cache custom lyric nếu muốn (tùy chọn)
+				const song = currentLyricSong();
+				if (song) {
+					const key = songCustomLyricKey(song);
+					if (key) {
+						customLyricMap[key] = { text: content, updatedAt: Date.now() };
+						saveCustomLyricMap();
+					}
+				}
+			};
+			reader.readAsText(file);
+			event.target.value = ""; // Reset input để có thể chọn lại cùng 1 file
+		}
 		function getAdaptiveRenderFps() {
 			if (isDeepBackgroundMode()) return 1;
 			if (RENDER_VISIBLE_VSYNC) return 0;
@@ -36391,9 +36475,6 @@ var visualGuideSteps = [
 		}
 		initMediaSessionHandlers();
 		animate();
-		setTimeout(() => {
-			initSavedYoutubeLogin();
-		}, 1500);
 	</script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 </body>

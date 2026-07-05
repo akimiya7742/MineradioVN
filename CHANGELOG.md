@@ -1,5 +1,11 @@
 # Changelog
 
+#v1.1.4
+- Change login method from cookie to playwright
+- Support better get recommend track using playwright
+- Support local lyrics (.lrc)
+- Add nodejs to yt-dlp flags
+
 ## v1.1.3
 - Change login method to cookie file instead of text
 - Support play related track

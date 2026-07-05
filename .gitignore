@@ -46,3 +46,4 @@ tmp/
 verification/
 screenshots/
 package-lock.json
+resources/*
