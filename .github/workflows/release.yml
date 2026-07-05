@@ -33,6 +33,7 @@ jobs:
   
       - name: Install playwright browser
         run: |
+          npx playwright install-deps chromium
           cmake -E make_directory resources/browsers
           npm run playwright:install
 

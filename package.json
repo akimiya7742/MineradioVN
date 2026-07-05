@@ -7,12 +7,12 @@
   "main": "desktop/main.js",
   "private": true,
   "scripts": {
-    "start": "electron .",
-    "server": "node server.js",
-    "action:build": "electron-builder --win --linux",
-    "build:win": "electron-builder --win nsis",
-    "build:win:dir": "electron-builder --win dir",
-    "build:linux": "electron-builder --linux",
+    "start": "cross-env NODE_ENV=development electron .",
+    "server": "cross-env NODE_ENV=development node server.js",
+    "action:build": "cross-env NODE_ENV=production electron-builder --win --linux",
+    "build:win": "cross-env NODE_ENV=production electron-builder --win nsis",
+    "build:win:dir": "cross-env NODE_ENV=production electron-builder --win dir",
+    "build:linux": "cross-env NODE_ENV=production electron-builder --linux",
     "playwright:install": "cross-env PLAYWRIGHT_BROWSERS_PATH=resources/browsers npx playwright install chromium"
   },
   "build": {
@@ -21,6 +21,9 @@
     "directories": {
       "output": "dist",
       "buildResources": "build"
+    },
+    "linux": {
+      "category": "Multimedia"
     },
     "afterPack": "build/after-pack.js",
     "toolsets": {

@@ -38,16 +38,105 @@ const USER_DATA_PATH = process.env.APPDATA || (process.platform == 'darwin' ? pa
 const APP_DATA_DIR = path.join(USER_DATA_PATH, 'Mineradio');
 const COOKIE_FILE_PATH = path.join(APP_DATA_DIR, 'youtube_cookies.txt');
 const JSON_COOKIE = path.join(APP_DATA_DIR, 'youtube_cookies.json');
+const SAVED_USER_AGENT = path.join(APP_DATA_DIR, 'user_agent.txt');
 if (!fs.existsSync(APP_DATA_DIR)) fs.mkdirSync(APP_DATA_DIR, { recursive: true });
 let recommenddata = [];
-const userAgent = new ua({
-	platform: process.platform == 'win32' ? 'Win32' : 'Linux', // 'Win32', 'Linux ...'
-	deviceCategory: 'desktop', // 'mobile', 'tablet'
-});
-const UA = userAgent.toString();
+let UA = '';
+if (fs.existsSync(SAVED_USER_AGENT)) {
+	UA = fs.readFileSync(SAVED_USER_AGENT, 'utf-8');
+} else {
+	const userAgent = new ua({
+		deviceCategory: 'desktop',
+	});
+	UA = userAgent.toString();
+	fs.writeFileSync(SAVED_USER_AGENT, UA);
+}
+
+async function updateYtdlpSmart() {
+    console.log("🔄 Đang kiểm tra cách cập nhật tối ưu cho yt-dlp...");
+	try {
+        // Lấy version hiện tại và convert sang string
+        const curr = execSync('yt-dlp --version', { stdio: 'pipe' }).toString().trim();
+        
+        const res = await fetch('https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest', {
+            headers: { 'User-Agent': 'Node.js-App' }
+        });
+        const data = await res.json();
+        const latest = data.tag_name; // Format: 2026.07.05
+
+        // So sánh theo dạng số YYYYMMDD để đảm bảo chính xác nhất
+        const v1 = parseInt(curr.replace(/\./g, ''));
+        const v2 = parseInt(latest.replace(/\./g, ''));
+
+        if (v1 >= v2) {
+            console.log("✅ yt-dlp đã là bản mới nhất.");
+            return { success: true, status: "already_updated" };
+        }
+    } catch (e) {
+        console.log("⚠️ Không kiểm tra được phiên bản hoặc yt-dlp chưa cài đặt.");
+    }
+    // Thử cập nhật bằng lệnh build-in trước (-U)
+    try {
+        console.log("🚀 Thử cập nhật trực tiếp bằng lệnh `yt-dlp -U`...");
+        // Nếu là Linux/Mac, có thể cần pkexec/sudo để ghi đè file binary trực tiếp
+        const prefix = process.platform !== 'win32' ? 'pkexec ' : '';
+        
+        // Chạy lệnh update gốc của yt-dlp
+        execSync(`${prefix}yt-dlp -U`, { stdio: 'inherit' });
+        console.log("🎉 Cập nhật thành công bằng lệnh chính chủ của yt-dlp!");
+        return { success: true }
+    } catch (error) {
+        console.log("⚠️ Lệnh `yt-dlp -U` bị chặn hoặc thất bại (Khả năng cao do Package Manager quản lý).");
+        console.log("🔄 Đang chuyển hướng sang cập nhật qua Package Manager của hệ thống...");
+    }
+
+    // --- FALLBACK: Khu vực chạy các lệnh Package Manager cũ nếu lệnh -U thất bại ---
+    let pm = "";
+    if (process.platform === 'win32') {
+        pm = "winget"; // Mặc định trên Windows hiện đại
+    } else {
+        // Kiểm tra các package manager trên Unix
+        const checkCmd = (cmd) => {
+            try { execSync(`which ${cmd} 2>/dev/null`); return true; } catch { return false; }
+        };
+
+        if (checkCmd('brew')) pm = 'brew';
+        else if (checkCmd('apt-get')) pm = 'apt';
+        else if (checkCmd('pacman')) pm = 'pacman';
+        else if (checkCmd('dnf')) pm = 'dnf';
+        else if (checkCmd('pip3') || checkCmd('pip')) pm = 'pip';
+    }
+
+    if (!pm) {
+        throw new Error("⛔ Không tìm thấy trình quản lý gói nào phù hợp (hỗ trợ winget, brew, apt, pacman, dnf, pip).");
+    }
+    let command = "";
+    const rootPrefix = (pm !== 'brew' && pm !== 'winget') ? "pkexec " : "";
+
+    switch (pm) {
+        case 'winget': command = "winget install yt-dlp"; break;
+        case 'brew': command = "brew install yt-dlp"; break;
+        case 'apt': command = `${rootPrefix}apt-get update && ${rootPrefix}apt-get install -y yt-dlp`; break;
+        case 'pacman': command = `${rootPrefix}pacman -Sy --noconfirm yt-dlp`; break;
+		case 'dnf': command = `${rootPrefix}dnf install -y yt-dlp`; break;
+        case 'pip': command = `${rootPrefix}pip3 install --upgrade --break-system-packages yt-dlp`; break;
+    }
+
+    try {
+        console.log(`💻 Đang chạy lệnh package manager: ${command}`);
+        execSync(command, { stdio: 'inherit' });
+        console.log("🎉 Đã cập nhật xong qua Package Manager!");
+		return { success: true }
+    } catch (err) {
+        console.error("💥 Thất bại hoàn toàn:", err.message);
+		return { success: false, error: err.message }
+    }
+}
 function getBrowsersDir() {
 	// Kiểm tra xem app có đang được đóng gói hay không (isPackaged)
-	const isPackaged = !!process.resourcesPath && !process.resourcesPath.includes('node_modules');
+	const execName = path.basename(process.execPath).toLowerCase();
+	const isPackaged = execName !== 'electron.exe' && execName !== 'electron';
+
 	if (isPackaged) {
 		// Môi trường Prod: Dùng process.resourcesPath
 		return path.join(process.resourcesPath, 'browsers');
@@ -79,7 +168,7 @@ function getPlaywrightExecutable() {
 	if (process.platform === 'win32') {
 		return path.join(browsersDir, chromiumDir, 'chrome-win64', 'chrome.exe');
 	} else if (process.platform === 'linux') {
-		return path.join(browsersDir, chromiumDir, 'chrome-linux', 'chrome');
+		return path.join(browsersDir, chromiumDir, 'chrome-linux64', 'chrome');
 	} else if (process.platform === 'darwin') {
 		return path.join(browsersDir, chromiumDir, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium');
 	}
@@ -156,7 +245,7 @@ async function initInnertube() {
 
 // Gọi khởi tạo khi server chạy
 initInnertube().then(() => {
-	console.log("[Auth Status]", loggedIn); // In ra true vì block này chỉ chạy sau khi hàm xong
+	if (process.env.NODE_ENV == 'development') console.log("[Auth Status]", loggedIn);
 });
 // ---------- YouTube Logic (yt-dlp) ----------
 
@@ -247,7 +336,7 @@ async function handleSearch(keywords, limit = 20) {
 /**
  * Get direct Audio Stream URL
  */
-async function handleGetUrl(id) {
+async function handleGetUrl(id) {	
 	console.log('[YouTube URL Discovery]', id);
 
 	// Kiểm tra xem file cookie có tồn tại không để truyền vào yt-dlp
@@ -297,15 +386,20 @@ async function autoScroll(page, maxTimeMs = 5000) {
  * Fetch Video Details
  */
 async function handleGetDetail(id) {
-	if (!innertube) innertube = await Innertube.create();
-	const track_info = await innertube.music.getInfo(id);
-	if (!track_info) return null;
+	let args = '';
+	if (fs.existsSync(COOKIE_FILE_PATH)) {
+		args+=`--cookies ${COOKIE_FILE_PATH} `
+	}
+	args+=`--skip-download --dump-json https://music.youtube.com/watch?v=${id}`;
+	const output = await runYtDlp(args);
+	const outputjson = JSON.parse(output);
 	return {
-		id: track_info.basic_info.id,
-		name: track_info.basic_info.title,
-		artist: track_info.basic_info.author,
-		cover: track_info.basic_info.thumbnail[0].url,
-		duration: track_info.basic_info.length_seconds * 1000
+		id: outputjson.id,
+		name: outputjson.title,
+		artist: outputjson.artists.join(', ') || "Unknown",
+		cover: `https://i.ytimg.com/vi/${outputjson.id}/maxresdefault.jpg`,
+		duration: outputjson.duration,
+		album: outputjson.album || "Unknown"
 	}
 }
 
@@ -365,6 +459,8 @@ async function getRecommendedTracks(brow = null, pge = null) {
 					'--disable-web-security',
 					'--disable-infobars',
 					'--disable-extensions',
+					'--disable-setuid-sandbox',
+        			'--disable-infobars',
 					'--start-maximized',
 					'--window-size=1280,720'
 				]
@@ -484,7 +580,14 @@ const server = http.createServer(async (req, res) => {
 		return;
 	}
 	const pn = url.pathname;
-	console.log(`[Debug] Route called: ${pn}`)
+	const queryString = url.searchParams.toString();
+	if (process.env.NODE_ENV == 'development') {
+		if (queryString) {
+			console.log(`[Debug] Route called: ${pn}?${queryString}`);
+		} else {
+			console.log(`[Debug] Route called: ${pn}`);
+		}
+	}
 	// Search API
 	if (pn === '/api/search') {
 		try {
@@ -551,39 +654,75 @@ const server = http.createServer(async (req, res) => {
 	if (pn === '/api/lyric') {
 		try {
 			const id = url.searchParams.get('id') || url.searchParams.get('mid');
-			let query = url.searchParams.get('q'); // Option to pass a direct query
+			let query = url.searchParams.get('title');
+			let artist = url.searchParams.get('artist');
+			let duration = url.searchParams.get('duration');
+			let album = url.searchParams.get('album');
+			
+			let meta = { name: query, artist, duration, album };
 
-			// If no direct query is passed, get the title/artist from YouTube
-			if (!query && id) {
-				const meta = await handleGetDetail(id);
-				if (meta) {
-					// Construct a query like "The Weeknd - Blinding Lights"
-					query = `${meta.artist} - ${meta.name}`;
+			// Chỉ fetch metadata nếu thiếu thông tin quan trọng
+			if ((!query || !artist || artist == 'Unknown') && id) {
+				const detail = await handleGetDetail(id);
+				if (detail) {
+					meta.name = query || detail.name;
+					meta.artist = artist || detail.artist;
+					meta.duration = duration || detail.duration;
+					meta.album = album || detail.album;
 				}
 			}
-			if (!query) {
+
+			if (!meta.name || !meta.artist) {
 				return sendJSON(res, { error: 'QUERY_OR_ID_REQUIRED', lyric: '' }, 400);
 			}
 
-			// Clean query: remove common YouTube fluff like "(Official Video)" 
-			// to improve LRCLIB search accuracy
-			const cleanQuery = cleanAndNormalizeYoutubeTitle(query);
-
-			const data = await searchLrcLib(cleanQuery);
-
-			if (data) {
-				sendJSON(res, {
-					lyric: data.syncedLyrics || data.plainLyrics || "",
-					tlyric: "",
-					source: "lrclib_search",
-					match: `${data.artistName} - ${data.trackName}`
+			// Try 1: Lấy trực tiếp từ LRCLIB bằng các tham số đã có
+			try {
+				const params = new URLSearchParams({
+					track_name: meta.name,
+					artist_name: meta.artist,
+					...(meta.album && { album_name: meta.album }),
+					...(meta.duration && { duration: meta.duration })
 				});
-			} else {
-				sendJSON(res, {
-					lyric: "[00:00.00] No lyrics found for: " + cleanQuery,
-					source: "lrclib_empty"
-				});
+
+				const tryDirect = await fetch(`https://lrclib.net/api/get?${params.toString()}`);
+				if (tryDirect.ok) {
+					const data = await tryDirect.json();
+					if (data && (data.syncedLyrics || data.plainLyrics)) {
+						console.log(`[LRCLIB Direct get] Match found: ${data.artistName} - ${data.trackName}`);
+						return sendJSON(res, {
+							lyric: data.syncedLyrics || data.plainLyrics || "",
+							tlyric: "",
+							source: "lrclib",
+							match: `${data.artistName} - ${data.trackName}`
+						});
+					}
+				}
+			} catch (err) {
+				console.error("Try 1 failed:", err);
 			}
+
+			// Try 2: Tìm kiếm theo query nếu Try 1 thất bại
+			try {
+				const cleanQuery = cleanAndNormalizeYoutubeTitle(`${meta.artist} - ${meta.name}`);
+				const data = await searchLrcLib(cleanQuery);
+				if (data && (data.syncedLyrics || data.plainLyrics)) {
+					return sendJSON(res, {
+						lyric: data.syncedLyrics || data.plainLyrics || "",
+						tlyric: "",
+						source: "lrclib_search",
+						match: `${data.artistName} - ${data.trackName}`
+					});
+				}
+			} catch (err) {
+				console.error("Try 2 failed:", err);
+			}
+
+			sendJSON(res, {
+				lyric: "[00:00.00] No lyrics found for: " + meta.name,
+				source: "lrclib_empty"
+			});
+
 		} catch (err) {
 			console.error('[Lyric Route Error]', err);
 			sendJSON(res, { error: err.message, lyric: "" }, 500);
@@ -621,6 +760,8 @@ const server = http.createServer(async (req, res) => {
 					'--disable-infobars',
 					'--disable-extensions',
 					'--start-maximized',
+					'--disable-setuid-sandbox',
+					'--disable-infobars',
 					'--window-size=1280,720'  // Set a specific window size
 				]
 			});
@@ -628,6 +769,33 @@ const server = http.createServer(async (req, res) => {
 				userAgent: UA,
 				viewport: { width: 1280, height: 720 },
 				deviceScaleFactor: 1,
+			});
+			await context.addInitScript(() => {
+				// 1. Overwrite the webdriver property to false
+				Object.defineProperty(navigator, 'webdriver', {
+					get: () => undefined,
+				});
+
+				// 2. Mock languages and plugins to look like a standard user browser
+				Object.defineProperty(navigator, 'languages', {
+					get: () => ['en-US', 'en'],
+				});
+
+				Object.defineProperty(navigator, 'plugins', {
+					get: () => [
+						{ description: "Portable Document Format", filename: "internal-pdf-viewer", name: "Chrome PDF Viewer" },
+						{ description: "Chromium PDF Plugin", filename: "internal-pdf-viewer", name: "Chromium PDF Viewer" }
+					],
+				});
+
+
+				// 4. Mock WebGL vendor strings
+				const getParameter = WebGLRenderingContext.prototype.getParameter;
+				WebGLRenderingContext.prototype.getParameter = function(parameter) {
+					if (parameter === 37445) return 'Intel Inc.';
+					if (parameter === 37446) return 'Intel(R) Iris(TM) Plus Graphics 640';
+					return getParameter.valueOf()(parameter);
+				};
 			});
 			const page = await context.newPage();
 
@@ -657,6 +825,10 @@ const server = http.createServer(async (req, res) => {
 	if (pn == '/api/logout') {
 		if (fs.existsSync(COOKIE_FILE_PATH)) fs.unlinkSync(COOKIE_FILE_PATH);
 		if (fs.existsSync(JSON_COOKIE)) fs.unlinkSync(JSON_COOKIE);
+		if (fs.existsSync(SAVED_USER_AGENT)) fs.unlinkSync(SAVED_USER_AGENT);
+		const newUserAgent = new ua({ deviceCategory: 'desktop' }).toString();
+		fs.writeFileSync(SAVED_USER_AGENT, newUserAgent);
+		UA = newUserAgent;
 		//if (innertube) await innertube.session.signOut();
 		innertube = await Innertube.create({ cookie: null });
 		sendJSON(res, { success: true });
@@ -683,6 +855,26 @@ const server = http.createServer(async (req, res) => {
 		sendJSON(res, { success: true, up_next });
 		return;
 
+	}
+	if (pn == '/api/update-check-yt-dlp'){
+		const data = await updateYtdlpSmart();
+		sendJSON(res, data);
+		return;
+	}
+	if (pn == '/api/update') {
+        const result = await fetch('https://api.github.com/repos/akimiya7742/MineradioVN/releases/latest', {
+            headers: { 'User-Agent': 'Node.js-App' }
+        });
+        const data = await result.json();
+        const latest = data.tag_name.slice(1);
+		const url = data.html_url;
+		const changelog = data.body;
+		return sendJSON(res,{
+			success: true,
+			latest: latest,
+			url: url,
+			changelog: changelog // the markdown result
+		})
 	}
 	// Static files
 	let filePath = pn === '/' ? '/index.html' : pn;

@@ -11491,13 +11491,13 @@
 							<path d="M14 4l-2 5-4 4-3 2 4 4 2-3 4-4 5-2z" />
 							<path d="M9 19l-4 4" />
 						</svg></button>
-					<button class="fx-mini-btn ghost" onclick="shuffleQueue()">Suffle</button>
+					<button class="fx-mini-btn ghost" onclick="shuffleQueue()">Shuffle</button>
 				</div>
 			</div>
 			<div class="panel-tabs">
 				<button id="tab-queue" class="panel-tab active" onclick="switchPlaylistTab('queue')">Queue</button>
-				<button id="tab-pl" class="panel-tab" onclick="switchPlaylistTab('playlists')">My Playlist</button>
-				<button id="tab-podcast" class="panel-tab" onclick="switchPlaylistTab('podcasts')">我的播客</button>
+				<!-- <button id="tab-pl" class="panel-tab" onclick="switchPlaylistTab('playlists')">My Playlist</button>
+				<button id="tab-podcast" class="panel-tab" onclick="switchPlaylistTab('podcasts')">Podcasts</button> -->
 			</div>
 			<div id="queue-pane">
 				<div class="queue-toolbar">
@@ -11992,7 +11992,7 @@
 							<span id="update-btn-fill" class="update-btn-fill"></span>
 							<span id="update-btn-label" class="update-btn-label">立即更新</span>
 						</button>
-						<button class="update-secondary-btn" type="button" onclick="closeUpdatePanel()">取消</button>
+						<button class="update-secondary-btn" type="button" onclick="closeUpdatePanel()">Close</button>
 					</div>
 					<div id="update-footnote" class="update-footnote">预览版只演示更新手感，不会真的下载安装。</div>
 				</div>
@@ -12176,42 +12176,12 @@
 			open: false,
 			status: 'idle',
 			progress: 0,
-			timer: null,
-			pollTimer: null,
-			downloadJobId: '',
-			patchJobId: '',
-			mode: 'installer',
-			installerPath: '',
-			installerOpened: false,
-			cached: false,
-			currentVersion: '0.9.11',
-			version: '1.1.0',
-			configured: false,
-			preview: true,
+			currentVersion: '0.0.0',
+			version: '0.0.0',
 			updateAvailable: false,
 			releaseUrl: '',
-			downloadUrl: '',
-			patchAvailable: false,
-			patchUrl: '',
-			received: 0,
-			total: 0,
-			speedBps: 0,
-			etaSeconds: 0,
-			sourceLabel: '',
-			attempt: 0,
-			attempts: 0,
-			errorReason: '',
-			errorDetail: '',
-			failedAttempts: [],
-			message: '',
-			restartRequired: false,
-			patchFallbackTried: false,
-			hero: '当前版本，更新检测已就绪。',
-			notes: [
-				'安装包文字对比修复',
-				'安装目录可自由选择',
-				'单实例与快捷方式修复'
-			]
+			hero: 'Checking for update...',
+			notes: []
 		};
 		function readSavedVolume() {
 			try {
@@ -28175,7 +28145,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				playing = false; setPlayIcon(false);
 				hideLoading();
 				forcePlaybackControlsInteractive();
-				if (!opts.silent) showToast(opts.manual ? 'Playback failed to start; please select the song again.' : 'Playback has been blocked by the system; please click the play button.');
+				if (!opts.silent) showToast(opts.manual ? 'Playback failed to start; please select the song again.' : 'Playback has been blocked by the system; please reload the track.');
 				return false;
 			}
 		}
@@ -28544,7 +28514,15 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 					endpoint = '/api/qq/lyric?mid=' + encodeURIComponent(mid) + '&id=' + encodeURIComponent(qqId);
 				} else {
 					var songId = song ? song.id : songOrId;
+					var songTitle = song ? song.name : '';
+					var songArtist = song ? song.artist : '';
+					var songAlbum = song ? song.album : '';
+					var songDuration = song ? song.duration : '';
 					endpoint = '/api/lyric?id=' + encodeURIComponent(songId);
+					if (songTitle) endpoint += '&title=' + encodeURIComponent(songTitle);
+					if (songArtist) endpoint += '&artist=' + encodeURIComponent(songArtist);
+					if (songAlbum) endpoint += '&album=' + encodeURIComponent(songAlbum);
+					if (songDuration) endpoint += '&duration=' + encodeURIComponent(songDuration);
 				}
 				var r = await apiJson(endpoint);
 				if (token !== trackSwitchToken) return;
@@ -28566,12 +28544,18 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		async function fetchLyricForLocal(song, token) {
 			if (!song || !song.name) return;
 			const query = (song.artist && song.artist !== '本地文件')
-				? `${song.name} ${song.artist}`
+				? `${song.name}`
 				: song.name;
-
+			const artist = (song.artist && song.artist !== '本地文件') ? song.artist : '';
+			const duration = song.duration || 0;
+			const album = song.album || '';
 			console.log(`[Auto-Lyric] Searching for: ${query}`);
 			try {
-				const r = await apiJson('/api/lyric?q=' + encodeURIComponent(query));
+				let endpoint = '/api/lyric?title=' + encodeURIComponent(query);
+				if (artist) endpoint += '&artist=' + encodeURIComponent(artist);
+				if (duration!=0) endpoint += '&duration=' + encodeURIComponent(duration);
+				if (album) endpoint += '&album=' + encodeURIComponent(album);
+				let r = await apiJson(endpoint);
 				if (token !== trackSwitchToken) return;
 				var nativeLines = parseYrcText(r.yrc || '');
 				var lrcLines = parseLyricText(r.lyric || '');
@@ -32295,36 +32279,47 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 
 		async function checkLatestUpdate() {
 			try {
-				var data = await apiJson('/api/update/latest?t=' + Date.now());
-				applyLatestUpdateInfo(data);
+				// Gọi API mới
+				const data = await apiJson('/api/update?t=' + Date.now());
+				if (data.success) {
+					applyLatestUpdateInfo(data);
+				}
 			} catch (e) {
-				updatePreviewState.preview = true;
-				updatePreviewState.updateAvailable = false;
-				updatePreviewState.hero = '当前版本，更新检测已就绪。';
+				console.warn('Failed to check for updates:', e);
+				updatePreviewState.hero = 'Failed to check for updates.';
 				renderUpdatePreviewPanel();
-				setUpdatePreviewVisible(true);
 			}
 		}
 
 		function applyLatestUpdateInfo(data) {
-			data = data || {};
-			var release = data.release || {};
-			updatePreviewState.currentVersion = data.currentVersion || updatePreviewState.currentVersion;
-			updatePreviewState.version = data.latestVersion || release.version || updatePreviewState.currentVersion;
-			updatePreviewState.configured = !!data.configured;
-			updatePreviewState.preview = !!data.preview;
-			updatePreviewState.updateAvailable = !!data.updateAvailable;
-			updatePreviewState.releaseUrl = release.htmlUrl || data.htmlUrl || '';
-			updatePreviewState.downloadUrl = release.downloadUrl || data.downloadUrl || '';
-			updatePreviewState.patchAvailable = !!(release.patchAvailable && release.patch && release.patch.downloadUrl);
-			updatePreviewState.patchUrl = updatePreviewState.patchAvailable ? release.patch.downloadUrl : '';
-			updatePreviewState.patchFallbackTried = false;
-			updatePreviewState.hero = release.summary || (updatePreviewState.updateAvailable ? '发现新版本，建议更新。' : '当前版本，更新检测已就绪。');
-			if (Array.isArray(release.notes) && release.notes.length) {
-				updatePreviewState.notes = release.notes.slice(0, 4);
+			// Lưu các thông tin từ API
+			updatePreviewState.version = data.latest;
+			updatePreviewState.releaseUrl = data.url;
+			
+			// So sánh phiên bản
+			updatePreviewState.updateAvailable = (data.latest !== updatePreviewState.currentVersion);
+			
+			// Cập nhật tiêu đề hiển thị
+			updatePreviewState.hero = updatePreviewState.updateAvailable 
+				? 'Found new update: v' + data.latest 
+				: 'You are using the latest version.';
+
+			// Xử lý Changelog (Markdown) thành danh sách dòng để hiển thị
+			if (data.changelog) {
+				// Tách các dòng, lọc bỏ dòng trống và lấy tối đa 5 dòng đầu
+				updatePreviewState.notes = data.changelog
+					.split('\n')
+					.map(line => line.replace(/^#+\s*|^\*\s*|^-\s*/, '').trim()) // Xóa ký hiệu markdown đầu dòng
+					.filter(line => line.length > 0)
+					.slice(1, 6);
+			} else {
+				updatePreviewState.notes = ['See details on the official website.'];
 			}
+
 			renderUpdatePreviewPanel();
-			setUpdatePreviewVisible(updatePreviewState.updateAvailable || updatePreviewState.preview);
+			
+			// Hiển thị icon thông báo nếu có bản cập nhật mới
+			setUpdatePreviewVisible(updatePreviewState.updateAvailable);
 		}
 
 		function startUpdateIconBreathing() {
@@ -32354,21 +32349,71 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			}
 		}
 
-		function renderUpdatePreviewPanel() {
-			var version = document.getElementById('update-modal-version');
-			var hero = document.getElementById('update-hero-main');
-			var list = document.getElementById('update-list');
-			if (version) version.textContent = 'v' + updatePreviewState.version;
-			if (hero) hero.textContent = updatePreviewState.hero || '当前版本，更新检测已就绪。';
-			if (list) {
-				var notes = Array.isArray(updatePreviewState.notes) && updatePreviewState.notes.length ? updatePreviewState.notes : ['更新检测已就绪'];
-				list.innerHTML = notes.map(function (text, i) {
-					return '<div class="update-item"><span class="update-item-dot" data-index="' + String(i + 1).padStart(2, '0') + '"></span><div class="update-item-text">' + escHtml(text) + '</div></div>';
-				}).join('');
-			}
-			updateUpdatePreviewProgress(updatePreviewState.progress);
-			syncUpdatePreviewStateClass();
+	function renderUpdatePreviewPanel() {
+		var versionEl = document.getElementById('update-modal-version');
+		var heroEl = document.getElementById('update-hero-main');
+		var listEl = document.getElementById('update-list');
+		var btnEl = document.getElementById('update-primary-btn');
+		var btnLabelEl = document.getElementById('update-btn-label');
+		var footnoteEl = document.getElementById('update-footnote');
+		var modalContainer = document.querySelector('#update-modal .update-modal');
+
+		// 1. Hiển thị phiên bản mới nhất từ Server
+		if (versionEl) {
+			versionEl.textContent = 'v' + (updatePreviewState.version || '0.0.0');
 		}
+
+		// 2. Hiển thị tiêu đề thông báo (Hero)
+		if (heroEl) {
+			heroEl.textContent = updatePreviewState.hero || 'Checking for update...';
+		}
+
+		// 3. Render danh sách Changelog (Notes)
+		if (listEl) {
+			if (updatePreviewState.notes && updatePreviewState.notes.length > 0) {
+				listEl.innerHTML = updatePreviewState.notes.map(function (text, i) {
+					return '<div class="update-item">' +
+						'<span class="update-item-dot" data-index="' + String(i + 1).padStart(2, '0') + '"></span>' +
+						'<div class="update-item-text">' + escHtml(text) + '</div>' +
+					'</div>';
+				}).join('');
+			} else {
+				listEl.innerHTML = '<div class="update-item"><div class="update-item-text">No change information available.</div></div>';
+			}
+		}
+
+		// 4. Cập nhật trạng thái nút bấm và màu sắc Modal
+		if (updatePreviewState.updateAvailable) {
+			// Có bản cập nhật mới
+			if (btnLabelEl) btnLabelEl.textContent = 'Download new version';
+			if (btnEl) btnEl.disabled = false;
+			
+			if (modalContainer) {
+				modalContainer.classList.add('ready'); // Màu vàng/xanh sáng
+				modalContainer.classList.remove('error');
+			}
+		} else {
+			// Đã là phiên bản mới nhất hoặc đang check
+			if (btnLabelEl) btnLabelEl.textContent = 'Already up to date';
+			if (btnEl) btnEl.disabled = true; // Vô hiệu hóa nút nếu không có gì để tải
+			
+			if (modalContainer) {
+				modalContainer.classList.remove('ready');
+				modalContainer.classList.remove('error');
+			}
+		}
+
+		// 5. Cập nhật dòng chú thích phía dưới (Footnote)
+		if (footnoteEl) {
+			footnoteEl.textContent = 'Version you are using: v' + (updatePreviewState.currentVersion || '... page loading');
+		}
+
+		// Đồng bộ class cho icon ngoài màn hình chính (update-entry)
+		var entryIcon = document.getElementById('update-entry');
+		if (entryIcon) {
+			entryIcon.classList.toggle('ready', updatePreviewState.updateAvailable);
+		}
+	}
 
 		function syncUpdatePreviewStateClass() {
 			var entry = document.getElementById('update-entry');
@@ -32693,50 +32738,14 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		}
 
 		function startUpdatePreviewDownload() {
-			var releaseLink = updatePreviewState.downloadUrl || updatePreviewState.releaseUrl;
-			if (updatePreviewState.status === 'ready' && updatePreviewState.mode === 'patch') {
-				restartForAppliedPatch();
-				return;
+			if (updatePreviewState.releaseUrl) {
+				// Mở trình duyệt ngoài
+				window.open(updatePreviewState.releaseUrl, '_blank');
+				showToast('Opening link in browser');
+				closeUpdatePanel();
+			} else {
+				showToast('No download link available');
 			}
-			if (updatePreviewState.configured && updatePreviewState.updateAvailable) {
-				if (updatePreviewState.patchAvailable && updatePreviewState.patchUrl && !updatePreviewState.patchFallbackTried) {
-					startRealUpdatePatch();
-				} else if (updatePreviewState.downloadUrl) {
-					startRealUpdateDownload();
-				} else if (releaseLink) {
-					window.open(releaseLink, '_blank');
-					showToast('已打开更新页面');
-				} else {
-					showToast('这个版本还没有可用下载链接');
-				}
-				return;
-			}
-			if (updatePreviewState.status === 'ready') {
-				if (window.gsap) {
-					var modal = document.querySelector('#update-modal .update-modal');
-					if (modal) window.gsap.fromTo(modal, { boxShadow: '0 30px 100px rgba(0,0,0,.62),0 0 0 1px rgba(244,210,138,.16)' }, { boxShadow: '0 30px 100px rgba(0,0,0,.62),0 0 34px rgba(244,210,138,.18)', duration: 0.52, yoyo: true, repeat: 1, ease: 'sine.inOut' });
-				}
-				showToast('正式接入后将重启并安装新版');
-				return;
-			}
-			if (updatePreviewState.status === 'downloading') return;
-			if (updatePreviewState.timer) clearInterval(updatePreviewState.timer);
-			updatePreviewState.status = 'downloading';
-			updateUpdatePreviewProgress(0);
-			var btn = document.getElementById('update-primary-btn');
-			if (btn && window.gsap) window.gsap.fromTo(btn, { scale: 0.985 }, { scale: 1, duration: 0.34, ease: 'back.out(1.45)', overwrite: true });
-			updatePreviewState.timer = setInterval(function () {
-				var next = updatePreviewState.progress + 3.2 + Math.random() * 7.5;
-				if (next >= 100) {
-					clearInterval(updatePreviewState.timer);
-					updatePreviewState.timer = null;
-					updatePreviewState.status = 'ready';
-					updateUpdatePreviewProgress(100);
-					pulseUpdateReady();
-				} else {
-					updateUpdatePreviewProgress(next);
-				}
-			}, 260);
 		}
 
 		function pulseUpdateReady() {
@@ -35650,7 +35659,11 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			markAppPerf('dom-content-loaded');
 			armSplashSoundFallback();
 			prewarmHomeWallpaperPreview();
-
+			if (window.electronAPI && window.electronAPI.getAppVersion) {
+				window.electronAPI.getAppVersion().then((version) => {
+					updatePreviewState.currentVersion = version;
+				});
+			}
 			function requestSplashEnter() {
 				playMineradioIntroSound();
 				if (splashReadyToEnter) dismissSplash();
@@ -35675,7 +35688,15 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			} else {
 				showToast("Guest Mode Active");
 			}
-
+			showBeatChip("Checking and updating yt-dlp...");
+			const data = await apiJson('/api/update-check-yt-dlp');
+			hideBeatChip();
+			if (data && data.success){
+				if (data.status && data.status == 'already_updated') showToast("yt-dlp is already up to date");
+				else showToast("yt-dlp is updated to the latest version");
+			} else {
+				showToast("Failed to update yt-dlp")
+			}
 			// 3. Sau khi xong mới cho hiện nút Enter
 			markSplashReadyToEnter();
 		});

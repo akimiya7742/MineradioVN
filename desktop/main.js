@@ -56,7 +56,9 @@ const CHROMIUM_PERFORMANCE_SWITCHES = [
   ['force_high_performance_gpu'],
   ['use-angle', isWindows ? 'd3d11' : 'vulkan'], 
 ];
-
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion(); // Fetches version from package.json
+});
 for (const [name, value] of CHROMIUM_PERFORMANCE_SWITCHES) {
   if (value == null) app.commandLine.appendSwitch(name);
   else app.commandLine.appendSwitch(name, value);
