@@ -20,6 +20,8 @@ const { promisify } = require('util');
 const execAsync = promisify(exec);
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+let userName = null;
+let avatarUrl = null;
 let loggedIn = false;
 let cookiestring = null;
 const MIME = {
@@ -33,7 +35,7 @@ const MIME = {
 	'.svg': 'image/svg+xml',
 };
 let innertube = null;
-let fetchedrecommenddata = [];
+let fetchedrecommenddata = null;
 const USER_DATA_PATH = process.env.APPDATA || (process.platform == 'darwin' ? path.join(os.homedir(), 'Library', 'Application Support') : path.join(os.homedir(), '.config'));
 const APP_DATA_DIR = path.join(USER_DATA_PATH, 'Mineradio');
 const COOKIE_FILE_PATH = path.join(APP_DATA_DIR, 'youtube_cookies.txt');
@@ -114,11 +116,11 @@ async function updateYtdlpSmart() {
     const rootPrefix = (pm !== 'brew' && pm !== 'winget') ? "pkexec " : "";
 
     switch (pm) {
-        case 'winget': command = "winget install yt-dlp"; break;
-        case 'brew': command = "brew install yt-dlp"; break;
-        case 'apt': command = `${rootPrefix}apt-get update && ${rootPrefix}apt-get install -y yt-dlp`; break;
-        case 'pacman': command = `${rootPrefix}pacman -Sy --noconfirm yt-dlp`; break;
-		case 'dnf': command = `${rootPrefix}dnf install -y yt-dlp`; break;
+        case 'winget': command = "winget install yt-dlp ffmpeg"; break;
+        case 'brew': command = "brew install yt-dlp ffmpeg"; break;
+		case 'apt': command = `${rootPrefix}bash -c "apt-get update && apt-get install -y ffmpeg curl && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp"`; break;
+        case 'pacman': command = `${rootPrefix}pacman -Sy --noconfirm yt-dlp ffmpeg`; break;
+		case 'dnf': command = `${rootPrefix}bash -c "dnf swap 'ffmpeg-free' 'ffmpeg' --allowerasing -y && dnf install -y yt-dlp"`; break;
         case 'pip': command = `${rootPrefix}pip3 install --upgrade --break-system-packages yt-dlp`; break;
     }
 
@@ -135,7 +137,7 @@ async function updateYtdlpSmart() {
 function getBrowsersDir() {
 	// Kiểm tra xem app có đang được đóng gói hay không (isPackaged)
 	const execName = path.basename(process.execPath).toLowerCase();
-	const isPackaged = execName !== 'electron.exe' && execName !== 'electron';
+	const isPackaged = execName && execName !== 'node' && execName !== 'node.exe' && execName !== 'electron.exe' && execName !== 'electron';
 
 	if (isPackaged) {
 		// Môi trường Prod: Dùng process.resourcesPath
@@ -424,6 +426,33 @@ async function getRecommendedTracks(brow = null, pge = null) {
 
 			// 3. Truy cập YouTube Music
 			await page.goto('https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fmusic.youtube.com%2F', { waitUntil: 'networkidle' });
+			if (!avatarUrl || !userName) {
+				await page.click('ytmusic-settings-button'); 
+				
+				// Đợi menu xuất hiện hẳn rồi mới lấy
+				await page.waitForSelector('ytmusic-multi-page-menu-renderer', { state: 'visible' });
+
+				// Lưu kết quả vào biến tạm từ hàm evaluate
+				const data = await page.evaluate(() => {
+					// Tìm element account-name
+					const nameElement = document.querySelector('yt-formatted-string#account-name');
+					// Tìm element ảnh avatar
+					const imgElement = document.querySelector('yt-img-shadow img');
+					
+					return {
+						name: nameElement ? nameElement.title.trim() : null,
+						img: imgElement ? imgElement.getAttribute('src') : null
+					};
+				});
+
+				// Cập nhật vào biến của bác
+				userName = data.name;
+				avatarUrl = data.img;
+
+				await page.keyboard.press('Escape'); 
+				// Đợi menu đóng hẳn để tránh lỗi click sau này
+				await page.waitForSelector('ytmusic-multi-page-menu-renderer', { state: 'hidden' });
+			}
 			await autoScroll(page);
 			// 4. Scrap phần "Chọn nhanh đài phát" (Giống logic bạn đã hỏi ở trên)
 			const data = await page.evaluate(() => {
@@ -469,6 +498,33 @@ async function getRecommendedTracks(brow = null, pge = null) {
 			const page = await context.newPage();
 			await context.addCookies(cookies);
 			await page.goto('https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fmusic.youtube.com%2F', { waitUntil: 'networkidle' });
+			if (!avatarUrl || !userName) {
+				await page.click('ytmusic-settings-button'); 
+				
+				// Đợi menu xuất hiện hẳn rồi mới lấy
+				await page.waitForSelector('ytmusic-multi-page-menu-renderer', { state: 'visible' });
+
+				// Lưu kết quả vào biến tạm từ hàm evaluate
+				const data = await page.evaluate(() => {
+					// Tìm element account-name
+					const nameElement = document.querySelector('yt-formatted-string#account-name');
+					// Tìm element ảnh avatar
+					const imgElement = document.querySelector('yt-img-shadow img');
+					
+					return {
+						name: nameElement ? nameElement.title.trim() : null,
+						img: imgElement ? imgElement.getAttribute('src') : null
+					};
+				});
+
+				// Cập nhật vào biến của bác
+				userName = data.name;
+				avatarUrl = data.img;
+
+				await page.keyboard.press('Escape'); 
+				// Đợi menu đóng hẳn để tránh lỗi click sau này
+				await page.waitForSelector('ytmusic-multi-page-menu-renderer', { state: 'hidden' });
+			}
 			await autoScroll(page); // Cuộn xuống để load hết nội dung
 			const data = await page.evaluate(() => {
 				const carousel = Array.from(document.querySelectorAll('ytmusic-carousel-shelf-renderer'))
@@ -524,8 +580,8 @@ async function getRecommendedTracks(brow = null, pge = null) {
 
 	// Lọc bỏ những bài bị lỗi (null)
 	tracks = resolvedTracks.filter(track => track !== null);
-	fetchedrecommenddata = tracks;
-	return tracks;
+	fetchedrecommenddata = {tracks,userName, avatarUrl};
+	return {tracks,userName, avatarUrl};
 }
 function serveStatic(res, filePath) {
 	const ext = path.extname(filePath);
@@ -812,7 +868,8 @@ const server = http.createServer(async (req, res) => {
 					fs.writeFileSync(COOKIE_FILE_PATH, netscape);
 					await getRecommendedTracks(browser, page);
 					await browser.close();
-					sendJSON(res, { success: true });
+					if (avatarUrl && userName) sendJSON(res, { success: true, avatarUrl: avatarUrl, userName: userName });
+					else sendJSON(res, { success: true });
 				}
 			}, 2000);
 		} catch (err) {
@@ -836,8 +893,8 @@ const server = http.createServer(async (req, res) => {
 		return;
 	}
 	if (pn == '/api/recommend') {
-		const rmd = (fetchedrecommenddata.length == 0) ? await getRecommendedTracks() : fetchedrecommenddata;
-		sendJSON(res, { success: true, rmd });
+		const rmd = (fetchedrecommenddata && fetchedrecommenddata !== {}) ? await getRecommendedTracks() : fetchedrecommenddata;
+		sendJSON(res, { success: true, rmd: rmd.tracks, userName: rmd.userName, avatarUrl: rmd.avatarUrl });
 		return;
 	}
 	if (pn == '/api/login/status') {

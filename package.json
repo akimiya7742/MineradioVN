@@ -1,7 +1,7 @@
 {
   "name": "mineradio",
   "productName": "Mineradio",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "An immersive music player featuring a weather-themed radio, a lyric stage, particle visualizations, and a 3D playlist rack.",
   "author": "Mineradio",
   "main": "desktop/main.js",

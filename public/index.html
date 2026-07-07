@@ -12278,7 +12278,9 @@
 				const result = await response.json();
 				if (result.success) {
 					loginStatus.loggedIn = true;
-					renderUserBtn();
+					const userName = result.userName || null;
+					const avatarUrl = result.avatarUrl || null;
+					renderUserBtn(userName, avatarUrl);
 					showToast('YouTube Account Connected');
 					loadHomeDiscover();
 					closeLoginModal();
@@ -22594,7 +22596,7 @@ void main(){
 						ctx.lineWidth = 1.1; ctx.stroke();
 						ctx.font = '800 14px Inter, "Microsoft YaHei", Arial';
 						ctx.fillStyle = readableInkForHex(shelfAccentHex());
-						ctx.fillText('▶ 播放歌单', tx + 25, actionY + 24);
+						ctx.fillText('▶ Play Playlist', tx + 25, actionY + 24);
 
 						makeRoundRect(ctx, tx + 150, actionY, 104, 38, 18);
 						ctx.fillStyle = 'rgba(255,255,255,0.055)'; ctx.fill();
@@ -22602,11 +22604,11 @@ void main(){
 						ctx.lineWidth = 1.1; ctx.stroke();
 						ctx.font = '700 14px Inter, "Microsoft YaHei", Arial';
 						ctx.fillStyle = 'rgba(255,255,255,0.78)';
-						ctx.fillText('详情', tx + 184, actionY + 24);
+						ctx.fillText('Details', tx + 184, actionY + 24);
 					} else if (item.type === 'queue') {
 						ctx.font = '600 14px Inter, "Microsoft YaHei", Arial';
 						ctx.fillStyle = shelfAccentRgba(0.84);
-						ctx.fillText('点击播放', tx, actionY + 25);
+						ctx.fillText('Click to play', tx, actionY + 25);
 					}
 				}
 
@@ -25071,7 +25073,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		}
 		async function loadHomeDiscover(force) {
 			if (homeDiscoverState.loading) return;
-
+			let userName = null, avatarUrl = null;
 			// Kiểm tra đăng nhập trước
 			if (!loginStatus.loggedIn) {
 				showLoginModal({ source: 'home-recommend' });
@@ -25089,6 +25091,8 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				// Gọi API recommend mới của bạn
 				const data = await apiJson('/api/recommend?t=' + Date.now());
 				const dataa = data?.rmd;
+				userName = data?.userName || null;
+				avatarUrl = data?.avatarUrl || null;
 				if (token !== homeDiscoverToken) return;
 
 				// data ở đây là mảng tracks trả về từ getRecommendedTracks của backend
@@ -25111,6 +25115,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				if (token === homeDiscoverToken) {
 					homeDiscoverState.loading = false;
 					renderHomeRecommend();
+					if (userName && avatarUrl) renderUserBtn(userName, avatarUrl);
 				}
 			}
 		}
@@ -28091,7 +28096,9 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 							applyPreferredLyricsForCurrent(true);
 						});
 					} else {
-						fetchLyric(song, token);
+						if (preferredLyricSourceForSong(song) !== 'custom') {
+							fetchLyric(song, token);
+						}
 					}
 					safeRenderQueuePanel('play-queue-at');
 					scheduleShelfRebuild('play-queue-at', true);
@@ -28525,7 +28532,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 					if (songDuration) endpoint += '&duration=' + encodeURIComponent(songDuration);
 				}
 				var r = await apiJson(endpoint);
-				if (token !== trackSwitchToken) return;
+				if (token !== trackSwitchToken || lyricSourceMode === 'custom') return;
 				var nativeLines = parseYrcText(r.yrc || '');
 				var lrcLines = parseLyricText(r.lyric || '');
 				var hasNativeKaraoke = nativeLines.some(function (line) { return line.words && line.words.length; });
@@ -28556,7 +28563,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				if (duration!=0) endpoint += '&duration=' + encodeURIComponent(duration);
 				if (album) endpoint += '&album=' + encodeURIComponent(album);
 				let r = await apiJson(endpoint);
-				if (token !== trackSwitchToken) return;
+				if (token !== trackSwitchToken || lyricSourceMode === 'custom') return;
 				var nativeLines = parseYrcText(r.yrc || '');
 				var lrcLines = parseLyricText(r.lyric || '');
 				var hasNativeKaraoke = nativeLines.some(function (line) { return line.words && line.words.length; });
@@ -29632,7 +29639,9 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 
 			// Tự động đi tìm lời bài hát từ server
 			if (title && title !== audioFile.name) {
-				fetchLyricForLocal(currentLocalSong, token);
+					if (lyricSourceMode !== 'custom') {
+						fetchLyricForLocal(currentLocalSong, token);
+					}
 			}
 			document.getElementById('trial-banner').classList.remove('show');
 
@@ -32976,7 +32985,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				stale: !!info.stale || !!(info.profileUnavailable && !(info.nickname && info.avatar))
 			});
 		}
-		function renderUserBtn() {
+		function renderUserBtn(userName = null, avatarUrl = null) {
 			var btn = document.getElementById('user-btn');
 			if (!btn) return;
 
@@ -32986,8 +32995,8 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				btn.title = 'Account Settings';
 				btn.innerHTML = `
 					<div style="display:flex; align-items:center; gap:8px;">
-						<div style="width:24px; height:24px; border-radius:50%; background:var(--fc-accent); display:flex; align-items:center; justify-content:center; color:#000; font-weight:bold; font-size:10px;">YT</div>
-						<span>Connected</span>
+						${avatarUrl ? `<img src="${avatarUrl}" alt="${userName}" style="width:24px; height:24px; border-radius:50%;">` : `<div style="width:24px; height:24px; border-radius:50%; background:var(--fc-accent); display:flex; align-items:center; justify-content:center; color:#000; font-weight:bold; font-size:10px;">YT</div>`}
+						<span>${userName || 'Connected'}</span>
 					</div>
 				`;
 			} else {
