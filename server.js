@@ -8,7 +8,9 @@
  * Original work Copyright (C) 2026 XxHuberrr
 */
 const http = require('http');
+const DiscordRPC = require('discord-rpc');
 const https = require('https');
+const dns = require('dns');
 const ua = require('user-agents');
 const fs = require('fs');
 const { Innertube } = require("youtubei.js");
@@ -37,6 +39,36 @@ const MIME = {
 let innertube = null;
 let fetchedrecommenddata = null;
 const USER_DATA_PATH = process.env.APPDATA || (process.platform == 'darwin' ? path.join(os.homedir(), 'Library', 'Application Support') : path.join(os.homedir(), '.config'));
+const clientId = process.env.CLIENT_ID || "1524089827291562094";
+function updateDiscordPresence(data) {
+    if (!rpcReady) return;
+    const startTimestamp = Date.now();
+    const endTimestamp = data.duration ? startTimestamp + (data.duration * 1000 - (data.currentTime * 1000)) : undefined;
+	let payload = {
+        details: data.title,
+        state: `${data.artist}`,
+        startTimestamp: data.paused ? undefined : startTimestamp,
+        endTimestamp: data.paused ? undefined : endTimestamp,
+        largeImageKey: data.cover,
+        largeImageText: data.title,
+        smallImageKey: data.paused ? 'https://cdn-icons-png.flaticon.com/512/16/16427.png' : 'https://cdn-icons-png.flaticon.com/512/16/16630.png',
+        smallImageText: data.paused ? 'Paused' : 'Playing',
+        instance: false,
+		type: 2,
+	}
+	if (data.id) {
+		payload.buttons = [
+			{ label: "Listen now", url: `https://music.youtube.com/watch?v=${data.id}` }
+		]
+	}
+    rpc.setActivity(payload);
+}
+const rpc = new DiscordRPC.Client({ transport: 'ipc' });
+let rpcReady = false;
+rpc.on('ready', () => {
+    console.log('[Discord] Rich Presence đã sẵn sàng!');
+    rpcReady = true;
+});
 const APP_DATA_DIR = path.join(USER_DATA_PATH, 'Mineradio');
 const COOKIE_FILE_PATH = path.join(APP_DATA_DIR, 'youtube_cookies.txt');
 const JSON_COOKIE = path.join(APP_DATA_DIR, 'youtube_cookies.json');
@@ -326,9 +358,10 @@ async function handleSearch(keywords, limit = 20) {
 			id: item.id,
 			name: item.title,
 			artist: item.artists.map(artist => artist.name).join(', ') || "Unknown",
+			artistId: item.artists[0]?.channel_id || null,
 			album: item.album?.name || 'YouTube Video',
 			cover: item.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
-			duration: (item.duration || 0) * 1000,
+			duration: (item.duration?.seconds || 0),
 			url: `https://www.youtube.com/watch?v=${item.id}`,
 			provider: 'youtube'
 		};
@@ -622,6 +655,27 @@ async function searchLrcLib(query) {
 		return null;
 	}
 }
+function checkInternet() {
+	return new Promise((resolve) => {
+		let resolved = false;
+		const timer = setTimeout(() => {
+			if (!resolved) {
+				resolved = true;
+				resolve(false);
+			}
+		}, 2500);
+
+		dns.lookup('google.com', (err) => {
+			clearTimeout(timer);
+			if (!resolved) {
+				resolved = true;
+				resolve(!err);
+			}
+		});
+	});
+}
+
+rpc.login({ clientId }).catch(console.error);
 const server = http.createServer(async (req, res) => {
 	const url = new URL(req.url, `http://${req.headers.host}`);
 	res.setHeader('Access-Control-Allow-Origin', '*'); // Cho phép mọi nguồn (hoặc thay bằng 'http://127.0.0.1:3000')
@@ -644,6 +698,17 @@ const server = http.createServer(async (req, res) => {
 			console.log(`[Debug] Route called: ${pn}`);
 		}
 	}
+	// Ping API
+	if (pn === '/api/ping') {
+		try {
+			const online = await checkInternet();
+			sendJSON(res, { online });
+		} catch (err) {
+			sendJSON(res, { online: false, error: err.message }, 500);
+		}
+		return;
+	}
+
 	// Search API
 	if (pn === '/api/search') {
 		try {
@@ -893,7 +958,7 @@ const server = http.createServer(async (req, res) => {
 		return;
 	}
 	if (pn == '/api/recommend') {
-		const rmd = (fetchedrecommenddata && fetchedrecommenddata !== {}) ? await getRecommendedTracks() : fetchedrecommenddata;
+		const rmd = (fetchedrecommenddata && Object.keys(fetchedrecommenddata).length > 0) ? fetchedrecommenddata : await getRecommendedTracks();
 		sendJSON(res, { success: true, rmd: rmd.tracks, userName: rmd.userName, avatarUrl: rmd.avatarUrl });
 		return;
 	}
@@ -932,6 +997,20 @@ const server = http.createServer(async (req, res) => {
 			url: url,
 			changelog: changelog // the markdown result
 		})
+	}
+	if (pn === '/api/rpc/update') {
+		let body = '';
+		req.on('data', chunk => { body += chunk.toString(); });
+		req.on('end', () => {
+			try {
+				const data = JSON.parse(body);
+				updateDiscordPresence(data);
+				sendJSON(res, { success: true });
+			} catch (e) {
+				sendJSON(res, { success: false }, 400);
+			}
+		});
+		return;
 	}
 	// Static files
 	let filePath = pn === '/' ? '/index.html' : pn;

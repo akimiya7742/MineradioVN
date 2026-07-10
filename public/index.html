@@ -10938,7 +10938,7 @@
 			z-index: 10;
 		}
 
-		.lyrics-control:hover .lyrics-popover {
+		.lyrics-control.active .lyrics-popover {
 			opacity: 1;
 			pointer-events: auto;
 			transform: translateX(-50%) translateY(0);
@@ -10967,6 +10967,17 @@
 		.lyrics-popover button.active {
 			color: var(--fc-accent);
 			background: rgba(var(--fc-accent-rgb), 0.1);
+		}
+		body.is-offline #user-btn,
+		body.is-offline #search-area,
+		body.is-offline #update-entry {
+			filter: grayscale(1) opacity(0.5);
+			pointer-events: none; /* Khóa click */
+		}
+		/* Vẫn cho phép nhấn nút Upload để chọn file local */
+		body.is-offline #upload-btn {
+			filter: none;
+			pointer-events: auto;
 		}
 	</style>
 </head>
@@ -11080,13 +11091,23 @@
 
 		<section id="empty-home" aria-label="Mineradio home">
 			<div class="home-recommend-container">
-				<div class="home-section-head" style="margin-bottom: 20px;">
-					<div class="home-section-title" style="font-size: 24px;">Recommended for You</div>
-					<div class="home-section-note" id="home-recommend-status">Loading tracks...</div>
+				<!-- Giao diện Offline mới thêm vào -->
+				<div id="home-offline-view" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 300px; gap: 15px; opacity: 0.6;">
+					<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+						<line x1="2" y1="2" x2="22" y2="22"/>
+					</svg>
+					<div style="font-size: 20px; font-weight: 500; color: #aaa;">You're offline</div>
+					<div style="font-size: 13px; color: #666;">Connect to the internet to see recommendations.</div>
 				</div>
-				<div id="home-recommend-list" class="home-tile-row"
-					style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;">
-					<!-- Track tiles sẽ được render ở đây -->
+
+				<!-- Các phần cũ giữ nguyên bên dưới -->
+				<div id="home-online-content">
+					<div class="home-section-head" style="margin-bottom: 20px;">
+						<div class="home-section-title" style="font-size: 24px;">Recommended for You</div>
+						<div id="home-recommend-status" class="home-section-note">Loading tracks...</div>
+					</div>
+					<div id="home-recommend-list" class="home-tile-row"></div>
 				</div>
 			</div>
 		</section>
@@ -11758,8 +11779,8 @@
 				</div>
 				<div class="control-cluster modes">
 					<!-- Nút Lyrics mới với Popover -->
-					<div class="lyrics-control">
-						<button class="ctrl-btn lyrics-toggle-btn" onclick="toggleLyricsPanel()" title="Lyrics">
+					<div class="lyrics-control" id="lyrics-control-wrap">
+						<button class="ctrl-btn lyrics-toggle-btn" onclick="toggleLyricsPopover(event)" title="Lyrics">
 							<span class="lyrics-word-icon">Lrc</span>
 						</button>
 						<div class="lyrics-popover">
@@ -12145,6 +12166,31 @@
 			} catch (e) { }
 		}
 		markAppPerf('script-start');
+		function toggleLyricsPopover(event) {
+			if (event) event.stopPropagation();
+			var wrap = document.getElementById('lyrics-control-wrap');
+			if (wrap) {
+				wrap.classList.toggle('active');
+			}
+		}
+		var oldToggleLyricsPanel = toggleLyricsPanel;
+		toggleLyricsPanel = function(force) {
+			oldToggleLyricsPanel(force);
+			var wrap = document.getElementById('lyrics-control-wrap');
+			if (wrap) wrap.classList.remove('active');
+		};
+		var oldFetchLyric = fetchLyricForCurrent;
+		fetchLyricForCurrent = async function() {
+			await oldFetchLyric();
+			var wrap = document.getElementById('lyrics-control-wrap');
+			if (wrap) wrap.classList.remove('active');
+		};
+		document.addEventListener('click', function(e) {
+			var wrap = document.getElementById('lyrics-control-wrap');
+			if (wrap && !wrap.contains(e.target)) {
+				wrap.classList.remove('active');
+			}
+		});
 		function installStartupLongTaskObserver() {
 			try {
 				if (!('PerformanceObserver' in window)) return;
@@ -12157,6 +12203,32 @@
 				observer.observe({ entryTypes: ['longtask'] });
 				setTimeout(function () { try { observer.disconnect(); } catch (e) { } }, 16000);
 			} catch (e) { }
+		}
+		var currentOnlineStatus = navigator.onLine;
+		async function updateOnlineStatus() {
+			try {
+				var res = await fetch('/api/ping');
+				var data = await res.json();
+				if(currentOnlineStatus == false && data.online == true) {
+					showToast("Connected to internet. Please reopen the app to load in online mode.");
+				} else if (currentOnlineStatus == true && data.online == false){
+					showToast("Internet connection lost! Switching to offline mode...")
+				}
+				currentOnlineStatus = !!data.online;
+			} catch (e) {
+				currentOnlineStatus = false;
+			}
+		}
+		// Chạy ngay lập tức để lấy status chính xác
+		updateOnlineStatus();
+		// Định kỳ ping mỗi 10 giây
+		setInterval(updateOnlineStatus, 10000);
+
+		window.addEventListener('online', updateOnlineStatus);
+		window.addEventListener('offline', updateOnlineStatus);
+
+		function isOnline() {
+			return currentOnlineStatus;
 		}
 		installStartupLongTaskObserver();
 		var queueViewTab = 'queue', playMode = 'loop', miniQueueOpen = false;
@@ -12183,6 +12255,18 @@
 			hero: 'Checking for update...',
 			notes: []
 		};
+		window.addEventListener('online', () => {
+			showToast("Internet connected. Online features enabled.");
+			document.body.classList.remove('is-offline');
+		});
+
+		window.addEventListener('offline', () => {
+			showToast("No internet connection. Local play mode only.");
+			document.body.classList.add('is-offline');
+			// Đóng các panel online nếu đang mở
+			closeLoginModal();
+			$results.classList.remove('show');
+		});
 		function readSavedVolume() {
 			try {
 				var v = parseFloat(localStorage.getItem('apex-player-volume'));
@@ -12268,7 +12352,32 @@
 				display.style.color = "var(--fc-accent)";
 			}
 		}
+		async function updateRPC(isPaused = false) {
+			const song = currentCoverSong();
+			if (!song) return;
 
+			// Lấy link cover (ưu tiên link youtube, bỏ qua nếu là base64/blob)
+			let coverUrl = song.cover || '';
+
+			// Kiểm tra nếu cover là link public (http/https)
+			const isPublicUrl = coverUrl.startsWith('http');
+
+			const payload = {
+				id: song?.id || null,
+				title: song.name,
+				artist: song.artist,
+				cover: isPublicUrl ? coverUrl : 'https://cdn.discordapp.com/app-icons/1524089827291562094/68a456c695423332fe91753e84891f76.png?size=256',
+				duration: audio ? audio.duration : 0,
+				currentTime: audio ? audio.currentTime : 0,
+				paused: isPaused
+			};
+
+			await fetch('/api/rpc/update', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+		}
 		async function submitYoutubeCookieFile() {
 			const submitBtn = document.getElementById('yt-login-submit')
 			submitBtn.disabled = true;
@@ -24514,6 +24623,11 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		//  API 助手
 		// ============================================================
 		async function apiJson(url, opts) {
+			if (!isOnline()) {
+				console.warn("Offline: Blocked API call to " + url);
+				// Trả về một object giả lập lỗi để các hàm gọi không bị crash
+				return { error: 'OFFLINE', success: false, tracks: [], songs: [], rmd: [] };
+			}
 			opts = opts || {};
 			var timeoutMs = Number(opts.timeoutMs) || 0;
 			var fetchOpts = Object.assign({}, opts);
@@ -25072,6 +25186,20 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			renderHomeTiles();
 		}
 		async function loadHomeDiscover(force) {
+			const offlineView = document.getElementById('home-offline-view');
+			const onlineContent = document.getElementById('home-online-content');
+
+			if (!isOnline()) {
+				// Nếu offline: Hiện icon đám mây, ẩn danh sách nhạc
+				if (offlineView) offlineView.style.display = 'flex';
+				if (onlineContent) onlineContent.style.display = 'none';
+				homeDiscoverState.loading = false;
+				return;
+			} else {
+				if (offlineView) offlineView.style.display = 'none';
+				if (onlineContent) onlineContent.style.display = 'block';
+			}
+
 			if (homeDiscoverState.loading) return;
 			let userName = null, avatarUrl = null;
 			// Kiểm tra đăng nhập trước
@@ -27184,6 +27312,10 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		}
 
 		async function doSearch(q, opts) {
+			if (!isOnline()) {
+				showToast("Search requires internet connection.");
+				return;
+			}
 			opts = opts || {};
 			q = String(q || '').trim();
 			if (!q) {
@@ -27840,6 +27972,11 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			if ('mediaSession' in navigator) {
 				navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
 			}
+			const oldSyncState = syncPlaybackStateFromAudioEvent;
+			syncPlaybackStateFromAudioEvent = function(reason) {
+				oldSyncState(reason);
+				updateRPC(audio.paused);
+			};
 		}
 
 		function isPlaybackRecursionError(err) {
@@ -27957,6 +28094,15 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 
 				try {
 					markPlayPhase('source-url');
+					var isLocal = (song.type === 'local' || song.source === 'local');
+					if (!isOnline()) {
+						if (isLocal) data = { url: song.localUrl };
+						else {
+							showToast("Cannot play online track without internet.");
+							hideLoading();
+							return;
+						}
+					}
 					var isQQPlayback = songProviderKey(song) === 'qq';
 					var requestedQuality = normalizePlaybackQuality(opts.qualityOverride || playbackQuality);
 					if (!isQQPlayback && requestedQuality === 'jymaster' && !hasProviderSvip('netease', loginStatus)) requestedQuality = 'hires';
@@ -28123,6 +28269,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				}
 				showToast(playbackFailureToastText(setupErr));
 			}
+			updateRPC(false);
 		}
 		async function attemptAudioPlay(opts) {
 			opts = opts || {};
@@ -33007,6 +33154,10 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			}
 		}
 		async function showLoginModal(opts) {
+			if (!isOnline()) {
+				showToast("Login requires internet connection.");
+				return;
+			}
 			opts = opts || {};
 			if (opts.provider) loginProvider = opts.provider === 'qq' ? 'qq' : 'netease';
 			var modal = document.getElementById('login-modal');
