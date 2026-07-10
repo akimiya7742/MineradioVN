@@ -1,6 +1,6 @@
 # Changelog
 
-# v1.1.4
+## v1.1.4
 - Change login method from cookie to playwright
 - Support better get recommend track using playwright
 - Support local lyrics (.lrc)
