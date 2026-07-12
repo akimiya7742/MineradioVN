@@ -7,6 +7,7 @@ Mineradio is an immersive music player for the Windows desktop. It combines a we
 
 ## Download the Windows Installer Now
 | Download Link | Target Users | URL |
+ :--- | :---: | ---: |
 | GitHub Release (Repo Fork) | Users with stable access to GitHub | [v1.1.5 Release](https://github.com/akimiya7742/MineradioVN/releases/tag/v1.1.5) |
 
 To install, simply download and run `Mineradio-1.1.5-Setup.exe`. **Do not** download `Source code`, `.blockmap`, or `latest.yml`, and do not treat `win-unpacked` as the official installation package.
@@ -59,13 +60,13 @@ If you have an older version installed, we recommend uninstalling it and isolati
 
 ## Betterlyrics setup
 You need to have a valid betterlyrics token in order to use BetterLyrics features and set `BETTERLYRICS_TOKEN` in your environment variable
-### For windows
+### For Windows
 Open command prompt (no need to run as Administrator), type the following command:
 ```
 setx BETTERLYRICS_TOKEN "your_token"
 ```
 And then restart your machine
-### For linux
+### For Linux
 Add `BETTERLYRICS_TOKEN=your_token` before the launching command, example:
 ```sh
 BETTERLYRICS_TOKEN=your_token ./Mineradio-x.x.x.AppImage
@@ -80,7 +81,6 @@ npm install
 npm start
 npm run build:win
 npm run build:linux # for linux build
-
 ```
 
 The desktop entry point is loaded into a local server by the Electron main process. Running `npm run build:win` will generate a Windows NSIS installer, with the output files located in the `dist/` directory.
