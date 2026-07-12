@@ -6,19 +6,14 @@ This project was forked and is currently maintained by [akimiya7742](https://git
 Mineradio is an immersive music player for the Windows desktop. It combines a weather radio, search & play, a lyric stage, particle visuals, and a 3D playlist rack into a personal music space that feels closer to a live concert experience.
 
 ## Download the Windows Installer Now
-
-> **For users in mainland China:** We highly recommend using Lanzou Cloud to download. Open the link and download `Mineradio-1.1.2-Setup.exe` directly. The speed is usually more stable and closer to your full bandwidth compared to GitHub Releases.
-
 | Download Link | Target Users | URL |
-| --- | --- | --- |
-| Lanzou Cloud (Full Speed) | Preferred for Mainland China users | [Download Mineradio 1.1.2 Installer](https://xxhuber.lanzout.com/s/Mineradio) |
-| GitHub Release (Repo Fork) | Users with stable access to GitHub | [v1.1.2 Release](https://github.com/akimiya7742/MineradioVN/releases/tag/v1.1.2) |
+| GitHub Release (Repo Fork) | Users with stable access to GitHub | [v1.1.5 Release](https://github.com/akimiya7742/MineradioVN/releases/tag/v1.1.5) |
 
-To install, simply download and run `Mineradio-1.1.2-Setup.exe`. **Do not** download `Source code`, `.blockmap`, or `latest.yml`, and do not treat `win-unpacked` as the official installation package.
+To install, simply download and run `Mineradio-1.1.5-Setup.exe`. **Do not** download `Source code`, `.blockmap`, or `latest.yml`, and do not treat `win-unpacked` as the official installation package.
 
 ## What to do if the Download or Installation is Blocked?
 
-As an indie Electron desktop app, unsigned installers may sometimes be flagged as risky by browsers, Windows Defender, or SmartScreen. First, ensure that your installer comes from the official Lanzou Cloud link or the GitHub Release links from this fork above, and that the filename is exactly `Mineradio-1.1.1-Setup.exe`.
+As an indie Electron desktop app, unsigned installers may sometimes be flagged as risky by browsers, Windows Defender, or SmartScreen. First, ensure that your installer comes from the official Lanzou Cloud link or the GitHub Release links from this fork above, and that the filename is exactly `Mineradio-1.1.5-Setup.exe`.
 
 1. **If your browser warns you about the file:** Open the download history, click the three dots `...` on the right side of the item, and choose `Keep` / `Keep anyway` / `Show more` to proceed.
 2. **If Windows SmartScreen pops up a blue blocking window:** Click `More info`, then click `Run anyway`.
@@ -34,11 +29,11 @@ The core goal of version 1.1.1 is to clean up and reorganize Mineradio into a cl
 
 ## Current Version
 
-Current Version: `1.1.2`
+Current Version: `1.1.5`
 
-Status: 1.1.2 Clean Installation Release (Fork Version).
+Status: 1.1.5 Clean Installation Release (Fork Version).
 
-> **Security Notice:** Installing or distributing `v1.0.10` and earlier legacy installers is no longer recommended. Please isolate old installer packages and use the `Mineradio-1.1.2-Setup.exe` provided on this page for a fresh, clean installation.
+> **Security Notice:** Installing or distributing `v1.0.10` and earlier legacy installers is no longer recommended. Please isolate old installer packages and use the `Mineradio-1.1.5-Setup.exe` provided on this page for a fresh, clean installation.
 
 ## Core Features
 
@@ -49,19 +44,37 @@ Status: 1.1.2 Clean Installation Release (Fork Version).
 * **Custom Album Art:** Supports image uploading and built-in cropping.
 * **3D Playlist Rack:** Triggered via right-click to let you intuitively browse through your playlist queues.
 * **GitHub Releases Update Detection:** Automated update checks with an in-app download entrance linking to this fork.
-* **YouTube integration:** Search and play songs from YouTube.
+* **YouTube and Spotify integration:** Search and play songs from YouTube, Spotify (read more about [Spotify intergration](./docs/SPOTIFY_INTEGRATION.md))
 * **Instant Out-of-the-Box Experience:** Ships with a built-in "Default Test" visual user profile so the software's default look matches this preset perfectly on its first launch.
+
+> Spotify playback need a working Spotify Premium account
 
 ## User Guide
 
 Windows users can download the installer from the Releases section of this fork.
 
-Official distribution relies strictly on `Mineradio-1.1.2-Setup.exe`. It is not recommended to use the `win-unpacked` directory as a portable version. The installer will automatically create a desktop shortcut. If you directly run the packed `Mineradio.exe`, the application will also generate a desktop shortcut on its first run.
+Official distribution relies strictly on `Mineradio-1.1.5-Setup.exe`. It is not recommended to use the `win-unpacked` directory as a portable version. The installer will automatically create a desktop shortcut. If you directly run the packed `Mineradio.exe`, the application will also generate a desktop shortcut on its first run.
 
-If you have an older version installed, we recommend uninstalling it and isolating the old installer before performing a clean installation with the `v1.1.2` package.
+If you have an older version installed, we recommend uninstalling it and isolating the old installer before performing a clean installation with the `v1.1.5` package.
+
+## Betterlyrics setup
+You need to have a valid betterlyrics token in order to use BetterLyrics features and set `BETTERLYRICS_TOKEN` in your environment variable
+### For windows
+Open command prompt (no need to run as Administrator), type the following command:
+```
+setx BETTERLYRICS_TOKEN "your_token"
+```
+And then restart your machine
+### For linux
+Add `BETTERLYRICS_TOKEN=your_token` before the launching command, example:
+```sh
+BETTERLYRICS_TOKEN=your_token ./Mineradio-x.x.x.AppImage
+```
+Or edit the `Exec` field of the application `.desktop` file using built-in editor (in some DE) or in text editor
 
 ## Development and Setup
-
+> [!NOTE]
+> This project uses a custom build of Electron - [Electron for Content Security](https://github.com/castlabs/electron-releases), if you build the app for production, please read the [EVS guide](https://github.com/castlabs/electron-releases/wiki/EVS)
 ```bash
 npm install
 npm start

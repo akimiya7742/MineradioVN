@@ -2,7 +2,7 @@
  * Modified by akimiya7742 on 29/06/2026
  * Original work Copyright (C) 2026 XxHuberrr
 */
-const { app, BrowserWindow, ipcMain, shell, screen, session, globalShortcut, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, screen, session, globalShortcut, dialog, components } = require('electron');
 const net = require('net');
 const path = require('path');
 const fs = require('fs');
@@ -63,7 +63,17 @@ for (const [name, value] of CHROMIUM_PERFORMANCE_SWITCHES) {
   if (value == null) app.commandLine.appendSwitch(name);
   else app.commandLine.appendSwitch(name, value);
 }
-const gotSingleInstanceLock = app.requestSingleInstanceLock();
+function applyLaunchEnvironment(additionalData) {
+  if (!additionalData || typeof additionalData.betterLyricsToken !== 'string') return;
+  const token = additionalData.betterLyricsToken.trim();
+  if (token) process.env.BETTERLYRICS_TOKEN = token;
+  else delete process.env.BETTERLYRICS_TOKEN;
+}
+
+const launchEnvironment = {
+  betterLyricsToken: String(process.env.BETTERLYRICS_TOKEN || '').trim(),
+};
+const gotSingleInstanceLock = app.requestSingleInstanceLock(launchEnvironment);
 
 const QQ_LOGIN_COOKIE_PRIORITY = [
   'uin',
@@ -635,6 +645,52 @@ async function clearNeteaseMusicLoginSession() {
   return { ok: true };
 }
 
+async function openSpotifyLoginWindow(owner) {
+  const port = mainServerPort || process.env.PORT || 3000;
+  return new Promise((resolve) => {
+    let settled = false;
+    const loginWindow = new BrowserWindow({
+      width: 540,
+      height: 760,
+      minWidth: 440,
+      minHeight: 620,
+      parent: owner && !owner.isDestroyed() ? owner : undefined,
+      modal: false,
+      show: false,
+      autoHideMenuBar: true,
+      title: 'Spotify Premium Login',
+      backgroundColor: '#0d0f0e',
+      icon: APP_ICON_ICO,
+      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+    });
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      if (loginWindow && !loginWindow.isDestroyed()) loginWindow.close();
+      resolve(result);
+    };
+    const inspectUrl = (target) => {
+      if (!String(target || '').includes('/api/spotify/login/complete')) return;
+      try {
+        const parsed = new URL(target);
+        const ok = parsed.searchParams.get('status') === 'success';
+        setTimeout(() => finish({ ok, error: ok ? '' : (parsed.searchParams.get('message') || 'SPOTIFY_LOGIN_FAILED') }), 350);
+      } catch (_) {}
+    };
+    loginWindow.webContents.on('did-navigate', (_event, target) => inspectUrl(target));
+    loginWindow.webContents.on('did-redirect-navigation', (_event, target) => inspectUrl(target));
+    loginWindow.webContents.setWindowOpenHandler(({ url }) => {
+      loginWindow.loadURL(url).catch((error) => finish({ ok: false, error: error.message }));
+      return { action: 'deny' };
+    });
+    loginWindow.on('ready-to-show', () => loginWindow.show());
+    loginWindow.on('closed', () => {
+      if (!settled) { settled = true; resolve({ ok: false, canceled: true }); }
+    });
+    loginWindow.loadURL(`http://127.0.0.1:${port}/api/spotify/login`).catch((error) => finish({ ok: false, error: error.message }));
+  });
+}
+
 function getWindowedBounds(win) {
   const display = win && !win.isDestroyed()
     ? screen.getDisplayMatching(win.getBounds())
@@ -1195,6 +1251,10 @@ ipcMain.handle('qq-music-clear-login', async () => {
   return clearQQMusicLoginSession();
 });
 
+ipcMain.handle('spotify-open-login', async (event) => {
+  return openSpotifyLoginWindow(getSenderWindow(event));
+});
+
 ipcMain.handle('mineradio-open-update-installer', async (_event, filePath) => {
   try {
     const target = path.resolve(String(filePath || ''));
@@ -1451,13 +1511,15 @@ if (process.platform === 'win32') app.setAppUserModelId(APP_USER_MODEL_ID);
 if (!gotSingleInstanceLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, _commandLine, _workingDirectory, additionalData) => {
+    applyLaunchEnvironment(additionalData);
     if (!focusMainWindow()) {
       app.whenReady().then(() => createWindow()).catch((e) => console.error('Second instance window restore failed:', e));
     }
   });
 
   app.whenReady().then(async () => {
+    await components.whenReady();
     screen.on('display-metrics-changed', () => {
       positionDesktopLyricsWindow();
       positionWallpaperWindow();

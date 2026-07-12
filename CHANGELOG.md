@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.5
+- Support Spotify features: OAuth, playback, search, remote control (via Spotify Connect)
+- Support BetterLyrics API for TTML lyrics
+- Change Electron build to castlab/electron (which support Widevine CDM)
+
 ## v1.1.4
 - Change login method from cookie to playwright
 - Support better get recommend track using playwright

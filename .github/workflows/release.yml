@@ -28,6 +28,16 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Python
+        if: matrix.os == 'windows-latest'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Castlabs EVS client
+        if: matrix.os == 'windows-latest'
+        run: |
+          python -m pip install --upgrade castlabs-evs
+
       - name: Install dependencies
         run: npm install
   
@@ -41,10 +51,29 @@ jobs:
           npm run playwright:install
 
       # Build tùy theo hệ điều hành (Tránh xung đột lệnh)
-      - name: Build Electron App
-        uses: samuelmeuli/action-electron-builder@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Electron App (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run build:linux
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Electron App (Windows Unpacked)
+        if: matrix.os == 'windows-latest'
+        run: npx electron-builder --win dir
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Sign VMP for Windows Package
+        if: matrix.os == 'windows-latest'
+        run: |
+          python -m castlabs_evs.vmp sign-pkg dist/win-unpacked
+        env:
+          EVS_ACCOUNT_NAME: ${{ secrets.EVS_ACCOUNT_NAME }}
+          EVS_PASSWD: ${{ secrets.EVS_PASSWD }}
+          EVS_NO_ASK: "true"
+      - name: Package Windows Installer (NSIS)
+        if: matrix.os == 'windows-latest'
+        run: npx electron-builder --win nsis --prepackaged dist/win-unpacked
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

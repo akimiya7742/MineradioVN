@@ -17,11 +17,13 @@ const { Innertube } = require("youtubei.js");
 const os = require('os');
 const { chromium } = require('playwright'); // Thay cho puppeteer[cite: 1]
 const path = require('path');
+const crypto = require('crypto');
 const { exec, execSync } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+require('dotenv').config();
 let userName = null;
 let avatarUrl = null;
 let loggedIn = false;
@@ -58,7 +60,7 @@ function updateDiscordPresence(data) {
 	}
 	if (data.id) {
 		payload.buttons = [
-			{ label: "Listen now", url: `https://music.youtube.com/watch?v=${data.id}` }
+			{ label: "Listen now", url: data.externalUrl || (data.provider === 'spt' ? `https://open.spotify.com/track/${data.id}` : `https://music.youtube.com/watch?v=${data.id}`) }
 		]
 	}
     rpc.setActivity(payload);
@@ -70,10 +72,137 @@ rpc.on('ready', () => {
     rpcReady = true;
 });
 const APP_DATA_DIR = path.join(USER_DATA_PATH, 'Mineradio');
+const SPOTIFY_CONFIG_FILE = path.join(APP_DATA_DIR, 'spotify_config.json');
+const SPOTIFY_TOKEN_FILE = path.join(APP_DATA_DIR, 'spotify_tokens.json');
+const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || `http://127.0.0.1:${PORT}/api/spotify/callback`;
+const SPOTIFY_SCOPES = [
+	'streaming',
+	'user-read-private',
+	'user-read-email',
+	'user-read-playback-state',
+	'user-read-currently-playing',
+	'user-modify-playback-state',
+	'playlist-read-private',
+	'user-library-read'
+].join(' ');
+let spotifyOAuthAttempt = null;
 const COOKIE_FILE_PATH = path.join(APP_DATA_DIR, 'youtube_cookies.txt');
 const JSON_COOKIE = path.join(APP_DATA_DIR, 'youtube_cookies.json');
 const SAVED_USER_AGENT = path.join(APP_DATA_DIR, 'user_agent.txt');
 if (!fs.existsSync(APP_DATA_DIR)) fs.mkdirSync(APP_DATA_DIR, { recursive: true });
+
+function readPrivateJson(filePath, fallback) {
+	try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
+	catch (_) { return fallback; }
+}
+
+function writePrivateJson(filePath, value) {
+	fs.writeFileSync(filePath, JSON.stringify(value, null, 2), { mode: 0o600 });
+}
+
+function spotifyClientConfig() {
+	const saved = readPrivateJson(SPOTIFY_CONFIG_FILE, {});
+	return {
+		clientId: String(process.env.SPOTIFY_CLIENT_ID || saved.clientId || '').trim(),
+		redirectUri: SPOTIFY_REDIRECT_URI
+	};
+}
+
+function base64Url(buffer) {
+	return Buffer.from(buffer).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+function spotifyErrorMessage(payload, fallback) {
+	return (payload && payload.error && (payload.error.message || payload.error_description || payload.error)) ||
+		(payload && payload.error_description) || fallback;
+}
+
+async function exchangeSpotifyToken(params) {
+	const config = spotifyClientConfig();
+	if (!config.clientId) throw new Error('SPOTIFY_CLIENT_ID_REQUIRED');
+	const response = await fetch('https://accounts.spotify.com/api/token', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		body: new URLSearchParams(Object.assign({ client_id: config.clientId }, params))
+	});
+	const payload = await response.json().catch(() => ({}));
+	if (!response.ok) throw new Error(spotifyErrorMessage(payload, `SPOTIFY_TOKEN_${response.status}`));
+	return payload;
+}
+
+async function getSpotifyAccessToken() {
+	let tokens = readPrivateJson(SPOTIFY_TOKEN_FILE, null);
+	if (!tokens || !tokens.access_token) throw new Error('SPOTIFY_LOGIN_REQUIRED');
+	if (Number(tokens.expires_at || 0) > Date.now() + 60000) return tokens.access_token;
+	if (!tokens.refresh_token) throw new Error('SPOTIFY_LOGIN_REQUIRED');
+	let refreshed;
+	try {
+		refreshed = await exchangeSpotifyToken({
+			grant_type: 'refresh_token',
+			refresh_token: tokens.refresh_token
+		});
+	} catch (error) {
+		if (/invalid_grant/i.test(String(error && error.message || ''))) {
+			if (fs.existsSync(SPOTIFY_TOKEN_FILE)) fs.unlinkSync(SPOTIFY_TOKEN_FILE);
+			throw new Error('SPOTIFY_REAUTH_REQUIRED');
+		}
+		throw error;
+	}
+	tokens = Object.assign({}, tokens, refreshed, {
+		refresh_token: refreshed.refresh_token || tokens.refresh_token,
+		expires_at: Date.now() + Number(refreshed.expires_in || 3600) * 1000
+	});
+	writePrivateJson(SPOTIFY_TOKEN_FILE, tokens);
+	return tokens.access_token;
+}
+
+async function spotifyApi(pathname, options) {
+	const token = await getSpotifyAccessToken();
+	const response = await fetch(`https://api.spotify.com/v1${pathname}`, Object.assign({}, options, {
+		headers: Object.assign({}, options && options.headers, { Authorization: `Bearer ${token}` })
+	}));
+	if (response.status === 204) return null;
+	const payload = await response.json().catch(() => ({}));
+	if (!response.ok) {
+		const error = new Error(spotifyErrorMessage(payload, `SPOTIFY_API_${response.status}`));
+		error.statusCode = response.status;
+		throw error;
+	}
+	return payload;
+}
+
+function spotifyTrackToSong(track) {
+	const images = track && track.album && Array.isArray(track.album.images) ? track.album.images : [];
+	return {
+		id: track.id,
+		uri: track.uri || `spotify:track:${track.id}`,
+		name: track.name || '',
+		artist: Array.isArray(track.artists) ? track.artists.map((artist) => artist.name).filter(Boolean).join(', ') : '',
+		artistId: track.artists && track.artists[0] ? track.artists[0].id : null,
+		album: track.album ? track.album.name : '',
+		cover: images[0] ? images[0].url : '',
+		duration: Number(track.duration_ms || 0),
+		explicit: !!track.explicit,
+		playable: track.is_playable !== false,
+		provider: 'spt',
+		source: 'spt',
+		type: 'spt'
+	};
+}
+// Bắt các Uncaught Exception (Ngoại lệ không được bắt)
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  // Ghi log lỗi vào hệ thống (ví dụ: Sentry, Winston)
+  // Sau đó thoát ứng dụng một cách an toàn
+  process.exit(1);
+});
+
+// Bắt các Unhandled Promise Rejection (Promise bị từ chối không được bắt)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Có thể không cần exit(1) ngay nhưng nên có log để theo dõi
+});
+
 let recommenddata = [];
 let UA = '';
 if (fs.existsSync(SAVED_USER_AGENT)) {
@@ -461,7 +590,7 @@ async function getRecommendedTracks(brow = null, pge = null) {
 			await page.goto('https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fmusic.youtube.com%2F', { waitUntil: 'networkidle' });
 			if (!avatarUrl || !userName) {
 				await page.click('ytmusic-settings-button'); 
-				
+
 				// Đợi menu xuất hiện hẳn rồi mới lấy
 				await page.waitForSelector('ytmusic-multi-page-menu-renderer', { state: 'visible' });
 
@@ -471,7 +600,7 @@ async function getRecommendedTracks(brow = null, pge = null) {
 					const nameElement = document.querySelector('yt-formatted-string#account-name');
 					// Tìm element ảnh avatar
 					const imgElement = document.querySelector('yt-img-shadow img');
-					
+
 					return {
 						name: nameElement ? nameElement.title.trim() : null,
 						img: imgElement ? imgElement.getAttribute('src') : null
@@ -690,6 +819,8 @@ const server = http.createServer(async (req, res) => {
 		return;
 	}
 	const pn = url.pathname;
+	const remoteAddress = String(req.socket && req.socket.remoteAddress || '');
+	const isLoopbackRequest = remoteAddress === '127.0.0.1' || remoteAddress === '::1' || remoteAddress === '::ffff:127.0.0.1';
 	const queryString = url.searchParams.toString();
 	if (process.env.NODE_ENV == 'development') {
 		if (queryString) {
@@ -707,6 +838,143 @@ const server = http.createServer(async (req, res) => {
 			sendJSON(res, { online: false, error: err.message }, 500);
 		}
 		return;
+	}
+
+	// Spotify OAuth + Web API. Sensitive routes are intentionally loopback-only.
+	if (pn.startsWith('/api/spotify/')) {
+		if (!isLoopbackRequest) return sendJSON(res, { error: 'LOCAL_REQUEST_REQUIRED' }, 403);
+		if (pn === '/api/spotify/config') {
+			if (req.method === 'POST') {
+				let raw = '';
+				for await (const chunk of req) {
+					raw += chunk;
+					if (raw.length > 16384) return sendJSON(res, { error: 'REQUEST_TOO_LARGE' }, 413);
+				}
+				try {
+					const body = JSON.parse(raw || '{}');
+					const clientId = String(body.clientId || '').trim();
+					if (clientId && !/^[A-Za-z0-9]{16,128}$/.test(clientId)) return sendJSON(res, { error: 'INVALID_CLIENT_ID' }, 400);
+					writePrivateJson(SPOTIFY_CONFIG_FILE, { clientId });
+					if (fs.existsSync(SPOTIFY_TOKEN_FILE)) fs.unlinkSync(SPOTIFY_TOKEN_FILE);
+					return sendJSON(res, { success: true, configured: !!clientId, redirectUri: SPOTIFY_REDIRECT_URI });
+				} catch (error) {
+					return sendJSON(res, { error: 'INVALID_JSON' }, 400);
+				}
+			}
+			const config = spotifyClientConfig();
+			return sendJSON(res, { configured: !!config.clientId, clientId: config.clientId, redirectUri: config.redirectUri });
+		}
+		if (pn === '/api/spotify/login') {
+			const config = spotifyClientConfig();
+			if (!config.clientId) return sendJSON(res, { error: 'SPOTIFY_CLIENT_ID_REQUIRED', redirectUri: config.redirectUri }, 400);
+			const verifier = base64Url(crypto.randomBytes(64));
+			const challenge = base64Url(crypto.createHash('sha256').update(verifier).digest());
+			const state = base64Url(crypto.randomBytes(24));
+			spotifyOAuthAttempt = { verifier, state, createdAt: Date.now() };
+			const authorize = new URL('https://accounts.spotify.com/authorize');
+			authorize.search = new URLSearchParams({
+				client_id: config.clientId,
+				response_type: 'code',
+				redirect_uri: config.redirectUri,
+				scope: SPOTIFY_SCOPES,
+				state,
+				code_challenge_method: 'S256',
+				code_challenge: challenge
+			}).toString();
+			res.writeHead(302, { Location: authorize.toString(), 'Cache-Control': 'no-store' });
+			res.end();
+			return;
+		}
+		if (pn === '/api/spotify/callback') {
+			try {
+				const attempt = spotifyOAuthAttempt;
+				spotifyOAuthAttempt = null;
+				if (url.searchParams.get('error')) throw new Error(url.searchParams.get('error'));
+				if (!attempt || Date.now() - attempt.createdAt > 10 * 60 * 1000 || url.searchParams.get('state') !== attempt.state) {
+					throw new Error('SPOTIFY_OAUTH_STATE_INVALID');
+				}
+				const code = url.searchParams.get('code');
+				if (!code) throw new Error('SPOTIFY_AUTH_CODE_MISSING');
+				const tokens = await exchangeSpotifyToken({
+					grant_type: 'authorization_code',
+					code,
+					redirect_uri: SPOTIFY_REDIRECT_URI,
+					code_verifier: attempt.verifier
+				});
+				tokens.expires_at = Date.now() + Number(tokens.expires_in || 3600) * 1000;
+				tokens.authorized_at = Date.now();
+				writePrivateJson(SPOTIFY_TOKEN_FILE, tokens);
+				res.writeHead(302, { Location: '/api/spotify/login/complete?status=success', 'Cache-Control': 'no-store' });
+				res.end();
+			} catch (error) {
+				res.writeHead(302, { Location: `/api/spotify/login/complete?status=error&message=${encodeURIComponent(error.message)}`, 'Cache-Control': 'no-store' });
+				res.end();
+			}
+			return;
+		}
+		if (pn === '/api/spotify/login/complete') {
+			const ok = url.searchParams.get('status') === 'success';
+			const message = ok ? 'Spotify đã kết nối với Mineradio.' : (url.searchParams.get('message') || 'Spotify login failed');
+			res.writeHead(ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+			res.end(`<!doctype html><meta charset="utf-8"><title>${ok ? 'Spotify connected' : 'Spotify error'}</title><style>html{color-scheme:dark;font-family:system-ui;background:#0d0f0e;color:#fff}body{display:grid;place-items:center;min-height:90vh}.card{padding:28px 32px;border:1px solid #ffffff24;border-radius:18px;background:#ffffff0a;max-width:440px}b{color:#1ed760}</style><div class="card"><b>${ok ? 'Connected' : 'Unable to connect'}</b><p>${String(message).replace(/[<>&"]/g, '')}</p><small>You can close this window</small></div>`);
+			return;
+		}
+		if (pn === '/api/spotify/logout') {
+			if (fs.existsSync(SPOTIFY_TOKEN_FILE)) fs.unlinkSync(SPOTIFY_TOKEN_FILE);
+			return sendJSON(res, { success: true });
+		}
+		if (pn === '/api/spotify/token') {
+			try { return sendJSON(res, { accessToken: await getSpotifyAccessToken(), expiresAt: readPrivateJson(SPOTIFY_TOKEN_FILE, {}).expires_at || 0 }); }
+			catch (error) { return sendJSON(res, { error: error.message }, error.message === 'SPOTIFY_LOGIN_REQUIRED' ? 401 : 500); }
+		}
+		if (pn === '/api/spotify/login/status') {
+			try {
+				const profile = await spotifyApi('/me');
+				return sendJSON(res, {
+					provider: 'spt', loggedIn: true, userId: profile.id || '', nickname: profile.display_name || profile.id || 'Spotify',
+					avatar: profile.images && profile.images[0] ? profile.images[0].url : '', premiumRequired: true
+				});
+			} catch (error) {
+				return sendJSON(res, { provider: 'spt', loggedIn: false, configured: !!spotifyClientConfig().clientId, error: error.message });
+			}
+		}
+		if (pn === '/api/spotify/search') {
+			try {
+				const keywords = String(url.searchParams.get('keywords') || '').trim();
+				if (!keywords) return sendJSON(res, { songs: [], provider: 'spt' });
+				const limit = Math.max(1, Math.min(10, Number(url.searchParams.get('limit')) || 10));
+				const data = await spotifyApi(`/search?${new URLSearchParams({ q: keywords, type: 'track', limit: String(limit) })}`);
+				return sendJSON(res, { songs: ((data.tracks && data.tracks.items) || []).map(spotifyTrackToSong), provider: 'spt' });
+			} catch (error) {
+				return sendJSON(res, { error: error.message, songs: [] }, error.statusCode || 500);
+			}
+		}
+		if (pn === '/api/spotify/queue') {
+			if (req.method !== 'GET') return sendJSON(res, { error: 'METHOD_NOT_ALLOWED' }, 405);
+			try {
+				const data = await spotifyApi('/me/player/currently-playing');
+				if (data && data.item) {
+					const trackQuery = data.item.name;
+					const trackAlbum = data.item.album.name;
+					const searchQuery = `album:\"${trackAlbum}\" track:\"${trackQuery}\"`;
+					const searchres = await spotifyApi(`/search?${new URLSearchParams({ q: searchQuery, type: 'track', limit: String(10) })}`);
+					const parsed = ((searchres.tracks && searchres.tracks.items) || []);
+					return sendJSON(res, { success: true, currently_playing: parsed[0], queue: parsed.slice(1) });
+				}
+			} catch (error) {
+				return sendJSON(res, { error: error.message, currently_playing: null, queue: [] }, error.statusCode || 500);
+			}
+		}
+		if (pn === '/api/spotify/devices') {
+			if (req.method !== 'GET') return sendJSON(res, { error: 'METHOD_NOT_ALLOWED' }, 405);
+			try {
+				const data = await spotifyApi('/me/player/devices');
+				return sendJSON(res, { devices: data && Array.isArray(data.devices) ? data.devices : [] });
+			} catch (error) {
+				return sendJSON(res, { error: error.message, devices: [] }, error.statusCode || 500);
+			}
+		}
+		return sendJSON(res, { error: 'SPOTIFY_ROUTE_NOT_FOUND' }, 404);
 	}
 
 	// Search API
@@ -771,6 +1039,28 @@ const server = http.createServer(async (req, res) => {
 		});
 		return;
 	}
+	// ---------- Lyrics (BetterLyrics Search for Youtube Track) ----------
+	if (pn == '/api/blyric') {
+		const id = url.searchParams.get('id');
+		if (!id) return sendJSON(res, { error: 'ID_REQUIRED' }, 404);
+		const token = url.searchParams.get('token') || process.env.BETTERLYRICS_TOKEN;
+		console.log(`[BetterLyrics]: Searching for ${id}`)
+		if (!token) return sendJSON(res, { error: 'NO_BETTER_LYRICS_TOKEN' }, 401);
+		const response = await fetch(`https://lyrics.api.dacubeking.com/lyrics?videoId=${id}&token=${token}`)
+		if (response.ok) {
+			const data = await response.json();
+			if (!data?.musixmatchSyncedLyrics && !data?.lrclibSyncedLyrics && !data?.goLyricsApiTtml) return sendJSON(res,{ error: "NO_BETTER_LYRICS" },404); // tell the frontend to search regular lyrics
+			else {
+				return sendJSON(res, {
+					lyric: data.musixmatchSyncedLyrics || data.lrclibSyncedLyrics,
+					ttmlLyric: data?.goLyricsApiTtml || null,
+					source: "betterlyrics",
+				})
+			}
+		} else {
+			return sendJSON(res,{ error: "CANNOT_FETCH" },404); // tell the frontend to search regular lyrics
+		}
+	}
 	// ---------- Lyrics (LRCLIB Search) ----------
 	if (pn === '/api/lyric') {
 		try {
@@ -781,6 +1071,7 @@ const server = http.createServer(async (req, res) => {
 			let album = url.searchParams.get('album');
 			
 			let meta = { name: query, artist, duration, album };
+			if (Number(meta.duration) > 1000) meta.duration = Math.round(Number(meta.duration) / 1000);
 
 			// Chỉ fetch metadata nếu thiếu thông tin quan trọng
 			if ((!query || !artist || artist == 'Unknown') && id) {
@@ -817,6 +1108,12 @@ const server = http.createServer(async (req, res) => {
 							source: "lrclib",
 							match: `${data.artistName} - ${data.trackName}`
 						});
+					} else if (data && data.instrumental) {
+						return sendJSON(res, {
+							lyriic: `[00:00.00] ${data.artistName} - ${data.trackName} (Instrumental)`,
+							source: "lrclib",
+							match: `${data.artistName} - ${data.trackName}`
+						})
 					}
 				}
 			} catch (err) {
@@ -834,6 +1131,12 @@ const server = http.createServer(async (req, res) => {
 						source: "lrclib_search",
 						match: `${data.artistName} - ${data.trackName}`
 					});
+				} else if (data && data.instrumental) {
+					return sendJSON(res, {
+						lyric: `[00:00.00] ${data.artistName} - ${data.trackName} (Instrumental)`,
+						source: "lrclib",
+						match: `${data.artistName} - ${data.trackName}`
+					})
 				}
 			} catch (err) {
 				console.error("Try 2 failed:", err);
