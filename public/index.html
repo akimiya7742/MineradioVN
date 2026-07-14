@@ -329,6 +329,44 @@
 			box-shadow: 0 0 16px rgba(255, 83, 103, .56)
 		}
 
+		#betterlyrics-settings-btn {
+			min-width: 58px
+		}
+
+		#betterlyrics-settings-btn.configured {
+			color: #eafffb;
+			border-color: rgba(0, 245, 212, .34);
+			background: rgba(0, 245, 212, .08)
+		}
+
+		#betterlyrics-settings-btn.configured::before {
+			background: #00f5d4;
+			box-shadow: 0 0 14px rgba(0, 245, 212, .48)
+		}
+
+		.betterlyrics-token-row {
+			display: grid;
+			grid-template-columns: 1fr auto;
+			gap: 8px;
+			align-items: center;
+			margin: 12px 0 10px
+		}
+
+		#betterlyrics-token-input {
+			height: 42px;
+			min-height: 0;
+			resize: none;
+			font-family: "JetBrains Mono", monospace;
+			font-size: 11px
+		}
+
+		#betterlyrics-token-status {
+			min-height: 34px;
+			font-size: 11px;
+			line-height: 1.55;
+			color: rgba(255, 255, 255, .52)
+		}
+
 		body.desktop-shell #desktop-titlebar #visual-guide-btn,
 		body.desktop-shell #desktop-titlebar #update-entry {
 			width: 30px;
@@ -11146,6 +11184,8 @@
 				<button id="diy-mode-btn" class="desktop-mode-btn" type="button" onclick="toggleDiyMode()"
 					title="Activate DIY enthusiast mode" aria-label="Activate DIY enthusiast mode"
 					aria-pressed="false">DIY</button>
+				<button id="betterlyrics-settings-btn" class="desktop-mode-btn" type="button" onclick="openBetterLyricsSettings()"
+					title="BetterLyrics Token" aria-label="BetterLyrics Token settings">BL</button>
 				<button class="desktop-window-btn" data-window-action="minimize" title="Minimize" aria-label="Minimize">
 					<svg viewBox="0 0 16 16">
 						<path d="M3 8h10" />
@@ -12066,6 +12106,22 @@
 				</div>
 			</div>
 		</div>
+		<div id="betterlyrics-modal" class="modal-mask">
+			<div class="modal" style="max-width:500px;text-align:left">
+				<h2 style="margin-bottom:7px">BetterLyrics Token</h2>
+				<p style="margin:0;color:rgba(255,255,255,.52);font-size:11px;line-height:1.6">The token is used to get word-synced TTML for YouTube Music. Mineradio stores the token locally and updates the operating system's user environment.</p>
+				<div class="betterlyrics-token-row">
+					<input id="betterlyrics-token-input" class="custom-lyric-input" type="password" autocomplete="off" spellcheck="false" placeholder="Paste BetterLyrics token">
+					<button id="betterlyrics-token-reveal" class="fx-mini-btn ghost" type="button" onclick="toggleBetterLyricsTokenVisibility()">Show</button>
+				</div>
+				<div id="betterlyrics-token-status">Checking configuration…</div>
+				<div class="btn-row">
+					<button class="modal-btn" type="button" onclick="closeBetterLyricsSettings()">Close</button>
+					<button class="modal-btn" type="button" onclick="clearBetterLyricsToken()">Clear</button>
+					<button class="modal-btn primary" type="button" onclick="saveBetterLyricsToken()">Save</button>
+				</div>
+			</div>
+		</div>
 		<!-- 封面裁剪模态 -->
 		<div id="cover-crop-modal" class="modal-mask">
 			<div class="modal cover-crop-modal">
@@ -12092,11 +12148,11 @@
 		<!-- 收藏到歌单模态 -->
 		<div id="collect-modal" class="modal-mask">
 			<div class="modal collect-modal">
-				<h2>收藏到歌单</h2>
+				<h2>Save to playlist / library</h2>
 				<div id="collect-current" class="collect-current"></div>
 				<div class="collect-create">
-					<input id="collect-new-name" type="text" placeholder="新建歌单名称" autocomplete="off" maxlength="40">
-					<button class="modal-btn primary" onclick="createPlaylistFromCollect()">创建</button>
+					<input id="collect-new-name" type="text" placeholder="New Playlist Name" autocomplete="off" maxlength="40">
+					<button class="modal-btn primary" onclick="createPlaylistFromCollect()">Create</button>
 				</div>
 				<div id="collect-list" class="collect-list"></div>
 				<div class="btn-row">
@@ -12272,7 +12328,7 @@
 		var AUDIO_FADE_IN_MS = 460;
 		var AUDIO_FADE_OUT_MS = 420;
 		var AUDIO_SILENCE_GAIN = 0.0001;
-		var userPlaylists = [], qqPlaylists = [], myPodcastCollections = [], myPodcastItems = {}, playlistCoverCache = {};
+		var userPlaylists = [], qqPlaylists = [], spotifyPlaylists = [], myPodcastCollections = [], myPodcastItems = {}, playlistCoverCache = {};
 		var CUSTOM_COVER_STORE_KEY = 'mineradio-custom-covers';
 		var CUSTOM_LYRIC_STORE_KEY = 'mineradio-custom-lyrics-v1';
 		var CUSTOM_LYRIC_PREF_STORE_KEY = 'mineradio-custom-lyric-prefs-v1';
@@ -12283,6 +12339,7 @@
 		var DIY_MODE_STORE_KEY = 'mineradio-diy-player-mode-v1';
 		var PLAYLIST_PANEL_PIN_STORE_KEY = 'mineradio-playlist-panel-pinned-v1';
 		var USER_CAPSULE_AUTO_HIDE_STORE_KEY = 'mineradio-user-capsule-auto-hide-v1';
+		var BETTERLYRICS_TOKEN_STORE_KEY = 'mineradio-betterlyrics-token-v1';
 		var FX_FAB_AUTO_HIDE_STORE_KEY = 'mineradio-fx-fab-auto-hide-v1';
 		var CONTROLS_AUTO_HIDE_STORE_KEY = 'mineradio-controls-auto-hide-v1';
 		var FREE_CAMERA_STORE_KEY = 'mineradio-free-camera-v1';
@@ -26229,7 +26286,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				var cover = songCoverSrc(s, 80);
 				var coverHtml = cover ? '<img class="artist-song-cover" src="' + escHtml(cover) + '" alt="" onerror="this.style.opacity=0.18">' : '<div class="artist-song-cover"></div>';
 				var actionsHtml = '<div class="artist-song-actions">' +
-					'<button class="artist-song-action collect" type="button" title="收藏到歌单" aria-label="收藏到歌单" onclick="event.stopPropagation();collectArtistDetailSong(' + i + ')">' + artistCollectTrayIconSvg() + '</button>' +
+					'<button class="artist-song-action collect" type="button" title="Save to playlist / library" aria-label="Save to playlist / library" onclick="event.stopPropagation();collectArtistDetailSong(' + i + ')">' + artistCollectTrayIconSvg() + '</button>' +
 					'<button class="artist-song-action next" type="button" title="下一首播放" aria-label="下一首播放" onclick="event.stopPropagation();queueArtistDetailSongNext(' + i + ')">' + artistNextPlusIconSvg() + '</button>' +
 					'</div>';
 				return '<div class="artist-song-item" onclick="playArtistDetailSong(' + i + ')">' +
@@ -26735,6 +26792,9 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			if (song.type === 'local' || song.type === 'podcast' || song.source === 'podcast') return false;
 			return !song.provider || song.provider === 'netease' || song.source === 'netease' || song.type === 'song';
 		}
+		function isSpotifySong(song) {
+			return !!(song && song.id && songProviderKey(song) === 'spt' && song.spotifyType !== 'ad');
+		}
 		function isSongLiked(song) {
 			return !!(song && song.id && likedSongMap[String(song.id)]);
 		}
@@ -26774,23 +26834,30 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			if (kind === 'like') {
 				return '<button class="song-action-btn' + (liked ? ' liked' : '') + '" title="' + (liked ? '取消红心' : '红心喜欢') + '" onclick="event.stopPropagation();toggleLike' + source + '(' + index + ')">' + heartIconSvg() + '</button>';
 			}
-			return '<button class="song-action-btn" title="收藏到歌单" onclick="event.stopPropagation();collect' + source + '(' + index + ')">' + playlistPlusIconSvg() + '</button>';
+			return '<button class="song-action-btn" title="Save to playlist / library" onclick="event.stopPropagation();collect' + source + '(' + index + ')">' + playlistPlusIconSvg() + '</button>';
 		}
 		function syncLikeStatusForSongs(songs) {
-			if (!loginStatus.loggedIn || !songs || !songs.length) return;
-			var ids = songs.filter(isCloudSong).map(function (s) { return String(s.id); });
-			if (!ids.length) return;
+			if (!songs || !songs.length) return;
+			var ids = loginStatus.loggedIn ? songs.filter(isCloudSong).map(function (s) { return String(s.id); }) : [];
+			var spotifyUris = spotifyProfile.loggedIn ? songs.filter(isSpotifySong).map(function (s) { return s.uri || ('spotify:track:' + s.id); }) : [];
+			if (!ids.length && !spotifyUris.length) return;
 			var token = ++likeStatusToken;
-			apiJson('/api/song/like/check?ids=' + encodeURIComponent(ids.join(','))).then(function (r) {
-				if (token < likeStatusToken - 3 || !r || !r.liked) return;
-				Object.keys(r.liked).forEach(function (id) { likedSongMap[String(id)] = !!r.liked[id]; });
+			var checks = [];
+			if (ids.length) checks.push(apiJson('/api/song/like/check?ids=' + encodeURIComponent(ids.join(','))));
+			if (spotifyUris.length) checks.push(apiJson('/api/spotify/library/contains?uris=' + encodeURIComponent(spotifyUris.join(','))));
+			Promise.all(checks).then(function (responses) {
+				if (token < likeStatusToken - 3) return;
+				responses.forEach(function (r) {
+					if (!r || !r.liked) return;
+					Object.keys(r.liked).forEach(function (id) { likedSongMap[String(id)] = !!r.liked[id]; });
+				});
 				safeRenderQueuePanel('like-status-sync', { scrollCurrent: miniQueueOpen });
 				if ($results && $results.classList.contains('show')) refreshSearchResultActionStates();
 				updateLikeButtons();
 			}).catch(function (err) { console.warn('like check failed:', err); });
 		}
 		function syncLikeStatusForSong(song) {
-			if (!isCloudSong(song)) { updateLikeButtons(song); return; }
+			if (!isCloudSong(song) && !isSpotifySong(song)) { updateLikeButtons(song); return; }
 			syncLikeStatusForSongs([song]);
 		}
 		function isLikedPlaylistContext(id, title, meta) {
@@ -26819,6 +26886,39 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			});
 		}
 		async function toggleLikeSong(song) {
+			if (isSpotifySong(song)) {
+				if (!spotifyProfile.loggedIn) {
+					showToast('Kết nối Spotify trước khi lưu vào Library');
+					openSpotifyModal();
+					return;
+				}
+				var spotifyId = String(song.id);
+				if (likeBusyMap[spotifyId]) return;
+				var saveToSpotify = !likedSongMap[spotifyId];
+				likeBusyMap[spotifyId] = true;
+				likedSongMap[spotifyId] = saveToSpotify;
+				updateLikeButtons(song);
+				safeRenderQueuePanel('spotify-like-optimistic', { scrollCurrent: miniQueueOpen });
+				refreshSearchResultActionStates();
+				try {
+					var spotifyResult = await apiJson('/api/spotify/library', {
+						method: saveToSpotify ? 'PUT' : 'DELETE',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ id: spotifyId, uri: song.uri || ('spotify:track:' + spotifyId) })
+					});
+					if (!spotifyResult || !spotifyResult.success) throw new Error(spotifyResult && spotifyResult.error || 'SPOTIFY_LIBRARY_FAILED');
+					showToast(saveToSpotify ? 'Đã lưu vào Spotify Library' : 'Đã xóa khỏi Spotify Library');
+				} catch (spotifyLikeError) {
+					likedSongMap[spotifyId] = !saveToSpotify;
+					showToast(/scope|permission|forbidden|403/i.test(String(spotifyLikeError && spotifyLikeError.message || '')) ? 'Hãy đăng nhập lại Spotify để cấp quyền Library' : 'Không thể cập nhật Spotify Library');
+				} finally {
+					delete likeBusyMap[spotifyId];
+					updateLikeButtons(song);
+					safeRenderQueuePanel('spotify-like-final', { scrollCurrent: miniQueueOpen });
+					refreshSearchResultActionStates();
+				}
+				return;
+			}
 			if (!isCloudSong(song)) {
 				showToast(songProviderKey(song) === 'qq' ? 'QQ 音乐红心同步待登录接口接入' : '本地文件暂不支持红心同步');
 				return;
@@ -26852,6 +26952,18 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		function toggleLikeQueueIndex(i) { if (playQueue[i]) toggleLikeSong(playQueue[i]); }
 		function toggleLikeDetailSong(song) { toggleLikeSong(song); }
 		function openCollectModal(song) {
+			if (isSpotifySong(song)) {
+				if (!spotifyProfile.loggedIn) {
+					showToast('Kết nối Spotify trước khi sửa playlist');
+					openSpotifyModal();
+					return;
+				}
+				collectTargetSong = song;
+				renderCollectModal();
+				openGsapModal(document.getElementById('collect-modal'));
+				refreshSpotifyPlaylists().then(renderCollectModal).catch(renderCollectModal);
+				return;
+			}
 			if (!isCloudSong(song)) {
 				showToast(songProviderKey(song) === 'qq' ? 'QQ 音乐收藏到歌单待登录接口接入' : '本地文件暂不支持收藏到网易云歌单');
 				return;
@@ -26873,6 +26985,12 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				if (input) input.value = '';
 			});
 		}
+		async function refreshSpotifyPlaylists() {
+			var response = await apiJson('/api/spotify/playlists');
+			if (response && response.error) throw new Error(response.error);
+			spotifyPlaylists = (response && response.playlists || []).filter(function (playlist) { return playlist && playlist.canModify; });
+			return spotifyPlaylists;
+		}
 		function renderCollectModal() {
 			var current = document.getElementById('collect-current');
 			var list = document.getElementById('collect-list');
@@ -26881,8 +26999,24 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			var cover = songCoverSrc(song, 80);
 			current.innerHTML = (cover ? '<img src="' + cover + '" alt="">' : '<div class="cover-placeholder"></div>') +
 				'<div style="min-width:0"><div class="collect-title">' + escHtml(song.name || '当前歌曲') + '</div><div class="collect-sub">' + escHtml(song.artist || '') + '</div></div>';
+			if (isSpotifySong(song)) {
+				if (!spotifyPlaylists.length) {
+					list.innerHTML = '<div class="collect-empty">No playlist that can be modified</div>';
+					return;
+				}
+				list.innerHTML = spotifyPlaylists.map(function (pl) {
+					var thumb = pl.cover || '';
+					return '<div class="collect-item" data-collect-pid="' + escHtml(String(pl.id || '')) + '">' +
+						(thumb ? '<img src="' + escHtml(thumb) + '" alt="">' : '<div class="cover-placeholder"></div>') +
+						'<div style="min-width:0;flex:1"><div class="collect-title">' + escHtml(pl.name || '') + '</div><div class="collect-sub">' + (pl.trackCount || 0) + ' songs · Spotify</div></div>' +
+						'<button class="fx-mini-btn" type="button" onclick="event.stopPropagation();changeSpotifyPlaylistItem(\'' + escHtml(String(pl.id || '')) + '\',true)">Add</button>' +
+						'<button class="fx-mini-btn ghost" type="button" onclick="event.stopPropagation();changeSpotifyPlaylistItem(\'' + escHtml(String(pl.id || '')) + '\',false)">Remove</button>' +
+						'</div>';
+				}).join('');
+				return;
+			}
 			if (!loginStatus.loggedIn) {
-				list.innerHTML = '<div class="collect-empty">登录后显示你的歌单</div>';
+				list.innerHTML = '<div class="collect-empty">Login to view your playlists</div>';
 				return;
 			}
 			if (!userPlaylists.length) {
@@ -26891,7 +27025,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			}
 			var mine = userPlaylists.filter(function (pl) { return !pl.subscribed; });
 			if (!mine.length) {
-				list.innerHTML = '<div class="collect-empty">还没有可写入的歌单，可以先新建一个</div>';
+				list.innerHTML = '<div class="collect-empty">No writable playlists available, you can create one first</div>';
 				return;
 			}
 			list.innerHTML = mine.map(function (pl) {
@@ -26911,6 +27045,24 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 			});
 		}
 		async function createPlaylistFromCollect() {
+			if (isSpotifySong(collectTargetSong)) {
+				var spotifyInput = document.getElementById('collect-new-name');
+				var spotifyName = spotifyInput ? spotifyInput.value.trim() : '';
+				if (!spotifyName) { showToast('Please enter a playlist name first'); return; }
+				try {
+					var spotifyCreated = await apiJson('/api/spotify/playlists', {
+						method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: spotifyName })
+					});
+					if (!spotifyCreated || !spotifyCreated.success) throw new Error(spotifyCreated && spotifyCreated.error || 'SPOTIFY_PLAYLIST_CREATE_FAILED');
+					if (spotifyInput) spotifyInput.value = '';
+					await refreshSpotifyPlaylists();
+					renderCollectModal();
+					if (spotifyCreated.playlist && spotifyCreated.playlist.id) changeSpotifyPlaylistItem(spotifyCreated.playlist.id, true);
+				} catch (spotifyCreateError) {
+					showToast('Failed to create Spotify playlist');
+				}
+				return;
+			}
 			if (!ensureLoggedInForAction()) return;
 			var input = document.getElementById('collect-new-name');
 			var name = input ? input.value.trim() : '';
@@ -26979,6 +27131,30 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				}, 900);
 			} catch (err) {
 				showToast(err && err.message ? err.message : '收藏失败');
+			} finally {
+				collectBusy = false;
+				setCollectBusyPid(pid, false);
+				updateLikeButtons();
+			}
+		}
+		async function changeSpotifyPlaylistItem(pid, shouldAdd) {
+			if (collectBusy || !isSpotifySong(collectTargetSong) || !pid) return;
+			collectBusy = true;
+			setCollectBusyPid(pid, true);
+			updateLikeButtons();
+			try {
+				var song = collectTargetSong;
+				var result = await apiJson('/api/spotify/playlist/items', {
+					method: shouldAdd ? 'POST' : 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ playlistId: pid, id: song.id, uri: song.uri || ('spotify:track:' + song.id) })
+				});
+				if (!result || !result.success) throw new Error(result && result.error || 'SPOTIFY_PLAYLIST_UPDATE_FAILED');
+				showToast(shouldAdd ? 'Added to playlist' : 'Removed from Spotify playlist');
+				await refreshSpotifyPlaylists();
+				renderCollectModal();
+			} catch (spotifyPlaylistError) {
+				showToast(/scope|permission|forbidden|403/i.test(String(spotifyPlaylistError && spotifyPlaylistError.message || '')) ? 'Please relogin to Spotify to regain playlist permissions' : 'Cannot update Spotify playlist');
 			} finally {
 				collectBusy = false;
 				setCollectBusyPid(pid, false);
@@ -27499,7 +27675,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 					'</div>' +
 					'</div>' +
 					'<button class="song-action-btn' + (isSongLiked(s) ? ' liked' : '') + '" data-like-index="' + i + '" title="' + (isSongLiked(s) ? '取消红心' : '红心喜欢') + '" onclick="event.stopPropagation();toggleLikeSearchResult(' + i + ')">' + heartIconSvg() + '</button>' +
-					'<button class="song-action-btn" title="收藏到歌单" onclick="event.stopPropagation();collectSearchResult(' + i + ')">' + playlistPlusIconSvg() + '</button>' +
+					'<button class="song-action-btn" title="Save to playlist / library" onclick="event.stopPropagation();collectSearchResult(' + i + ')">' + playlistPlusIconSvg() + '</button>' +
 					'<button class="add-btn" title="下一首播放" onclick="event.stopPropagation();queueSearchResult(' + i + ')">+</button>' +
 					'</div>';
 			}).join('');
@@ -28180,6 +28356,91 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				if (status && status.error === 'OFFLINE') return;
 				renderSpotifyUserButton(status);
 			} catch (_) { }
+		}
+		function setBetterLyricsSettingsStatus(message, good) {
+			var status = document.getElementById('betterlyrics-token-status');
+			if (!status) return;
+			status.textContent = message || '';
+			status.style.color = good === true ? '#a9f5c5' : (good === false ? '#ff9ca8' : 'rgba(255,255,255,.52)');
+		}
+		function renderBetterLyricsSettingsState(config) {
+			config = config || {};
+			var button = document.getElementById('betterlyrics-settings-btn');
+			if (button) {
+				button.classList.toggle('configured', !!config.configured);
+				button.title = config.configured ? ('BetterLyrics · ' + (config.source === 'environment' ? 'Environment' : 'Mineradio storage')) : 'BetterLyrics Token';
+			}
+		}
+		async function loadBetterLyricsSettings(fillInput) {
+			try {
+				var config = await apiJson('/api/blyric/config');
+				if (config && config.error) throw new Error(config.error);
+				renderBetterLyricsSettingsState(config);
+				var token = String(config.token || '');
+				if (!token) {
+					try { token = localStorage.getItem(BETTERLYRICS_TOKEN_STORE_KEY) || ''; } catch (_) { }
+				}
+				if (fillInput) {
+					var input = document.getElementById('betterlyrics-token-input');
+					if (input) input.value = token;
+					var sourceLabel = config.source === 'environment' ? 'process/user environment' : (config.source === 'mineradio' ? 'Mineradio secure config' : (token ? 'browser local storage' : 'not configured'));
+					setBetterLyricsSettingsStatus(config.configured || token ? ('Current Token: ' + sourceLabel + '.') : 'No BetterLyrics Token configured.', config.configured || !!token);
+				}
+				return config;
+			} catch (error) {
+				if (fillInput) setBetterLyricsSettingsStatus('Failed to read configuration: ' + (error.message || error), false);
+				return null;
+			}
+		}
+		function openBetterLyricsSettings() {
+			openGsapModal(document.getElementById('betterlyrics-modal'));
+			var input = document.getElementById('betterlyrics-token-input');
+			if (input) input.type = 'password';
+			var reveal = document.getElementById('betterlyrics-token-reveal');
+			if (reveal) reveal.textContent = 'Show';
+			setBetterLyricsSettingsStatus('Checking configuration…');
+			loadBetterLyricsSettings(true);
+		}
+		function closeBetterLyricsSettings() { closeGsapModal(document.getElementById('betterlyrics-modal')); }
+		function toggleBetterLyricsTokenVisibility() {
+			var input = document.getElementById('betterlyrics-token-input');
+			var button = document.getElementById('betterlyrics-token-reveal');
+			if (!input) return;
+			input.type = input.type === 'password' ? 'text' : 'password';
+			if (button) button.textContent = input.type === 'password' ? 'Show' : 'Hide';
+		}
+		async function saveBetterLyricsToken() {
+			var input = document.getElementById('betterlyrics-token-input');
+			var token = String(input && input.value || '').trim();
+			if (!token) { setBetterLyricsSettingsStatus('Please enter a token before saving.', false); return; }
+			setBetterLyricsSettingsStatus('Saving and updating environment…');
+			try {
+				var response = await apiJson('/api/blyric/config', {
+					method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token })
+				});
+				if (!response || !response.success) throw new Error(response && response.error || 'SAVE_FAILED');
+				try { localStorage.setItem(BETTERLYRICS_TOKEN_STORE_KEY, token); } catch (_) { }
+				renderBetterLyricsSettingsState({ configured: true, source: 'environment' });
+				setBetterLyricsSettingsStatus(response.environmentUpdated ? 'Saved. Token is effective immediately and user environment has been updated.' : ('Saved for Mineradio and effective immediately. OS environment could not be updated: ' + (response.environmentError || 'unknown error')), response.environmentUpdated);
+				showToast('BetterLyrics Token has been saved');
+			} catch (error) {
+				setBetterLyricsSettingsStatus('Failed to save token`: ' + (error.message || error), false);
+			}
+		}
+		async function clearBetterLyricsToken() {
+			setBetterLyricsSettingsStatus('Clearing token...');
+			try {
+				var response = await apiJson('/api/blyric/config', { method: 'DELETE' });
+				if (!response || !response.success) throw new Error(response && response.error || 'CLEAR_FAILED');
+				try { localStorage.removeItem(BETTERLYRICS_TOKEN_STORE_KEY); } catch (_) { }
+				var input = document.getElementById('betterlyrics-token-input');
+				if (input) input.value = '';
+				renderBetterLyricsSettingsState({ configured: false, source: 'none' });
+				setBetterLyricsSettingsStatus(response.environmentUpdated ? 'Token has been cleared from Mineradio and user environment.' : 'Token has been cleared from Mineradio; OS environment could not be fully cleared.', response.environmentUpdated);
+				showToast('BetterLyrics Token has been cleared');
+			} catch (error) {
+				setBetterLyricsSettingsStatus('Failed to clear token: ' + (error.message || error), false);
+			}
 		}
 
 		async function openSpotifyModal() {
@@ -29988,7 +30249,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 					'<div class="qi-act">' +
 					'<button class="' + (isSongLiked(song) ? 'liked' : '') + '" onclick="event.stopPropagation();toggleLikeQueueIndex(' + i + ')" title="' + (isSongLiked(song) ? '取消红心' : '红心喜欢') + '">' + heartIconSvg() + '</button>' +
 					'<button class="queue-next" onclick="event.stopPropagation();queueIndexNext(' + i + ')" title="下一首播放">下</button>' +
-					'<button onclick="event.stopPropagation();collectQueueIndex(' + i + ')" title="收藏到歌单">' + playlistPlusIconSvg() + '</button>' +
+					'<button onclick="event.stopPropagation();collectQueueIndex(' + i + ')" title="Save to playlist / library">' + playlistPlusIconSvg() + '</button>' +
 					'<button onclick="event.stopPropagation();removeFromQueue(' + i + ')" title="移除">×</button>' +
 					'</div>' +
 					'</div>';
@@ -33895,6 +34156,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 				['login-modal', closeLoginModal],
 				['user-modal', closeUserModal],
 				['spotify-modal', closeSpotifyModal],
+				['betterlyrics-modal', closeBetterLyricsSettings],
 				['custom-lyric-modal', closeCustomLyricModal],
 				['update-modal', closeUpdatePanel]
 			].forEach(function (pair) {
@@ -37568,6 +37830,7 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
 		}
 		initMediaSessionHandlers();
 		setTimeout(refreshSpotifyUserButton, 700);
+		setTimeout(function () { loadBetterLyricsSettings(false); }, 850);
 		animate();
 	</script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>

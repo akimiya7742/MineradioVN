@@ -59,7 +59,8 @@ Official distribution relies strictly on `Mineradio-1.1.5-Setup.exe`. It is not 
 If you have an older version installed, we recommend uninstalling it and isolating the old installer before performing a clean installation with the `v1.1.5` package.
 
 ## Betterlyrics setup
-You need to have a valid betterlyrics token in order to use BetterLyrics features and set `BETTERLYRICS_TOKEN` in your environment variable
+You need to have a valid betterlyrics token in order to use BetterLyrics features and set `BETTERLYRICS_TOKEN` in-app or in your environment variable, see [how to get BetterLyrics token](./docs/GET_BETTERLYRICS_TOKEN.md)
+> Update: You can now set the token directly in the app (the button is near the DIY button)
 ### For Windows
 Open command prompt (no need to run as Administrator), type the following command:
 ```

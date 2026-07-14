@@ -1,13 +1,13 @@
 {
   "name": "mineradio",
   "productName": "Mineradio",
-  "version": "1.1.5",
+  "version": "1.1.5-rev1",
   "description": "An immersive music player featuring a weather-themed radio, a lyric stage, particle visualizations, and a 3D playlist rack.",
   "author": "Mineradio",
   "main": "desktop/main.js",
   "private": true,
   "scripts": {
-    "start": "cross-env NODE_ENV=development electron .",
+    "start": "cross-env NODE_ENV=development electron . --no-sandbox --no-zygote",
     "server": "cross-env NODE_ENV=development node server.js",
     "action:build": "cross-env NODE_ENV=production electron-builder --win --linux",
     "build:win": "cross-env NODE_ENV=production electron-builder --win nsis",
@@ -56,7 +56,7 @@
         ]
       }
     ],
-    "asar": false,
+    "asar": true,
     "win": {
       "executableName": "Mineradio",
       "icon": "build/icon.ico",

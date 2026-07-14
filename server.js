@@ -18,9 +18,10 @@ const os = require('os');
 const { chromium } = require('playwright'); // Thay cho puppeteer[cite: 1]
 const path = require('path');
 const crypto = require('crypto');
-const { exec, execSync } = require('child_process');
+const { exec, execFile, execSync } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 require('dotenv').config();
@@ -74,6 +75,7 @@ rpc.on('ready', () => {
 const APP_DATA_DIR = path.join(USER_DATA_PATH, 'Mineradio');
 const SPOTIFY_CONFIG_FILE = path.join(APP_DATA_DIR, 'spotify_config.json');
 const SPOTIFY_TOKEN_FILE = path.join(APP_DATA_DIR, 'spotify_tokens.json');
+const BETTERLYRICS_CONFIG_FILE = path.join(APP_DATA_DIR, 'betterlyrics_config.json');
 const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || `http://127.0.0.1:${PORT}/api/spotify/callback`;
 const SPOTIFY_SCOPES = [
 	'streaming',
@@ -83,7 +85,11 @@ const SPOTIFY_SCOPES = [
 	'user-read-currently-playing',
 	'user-modify-playback-state',
 	'playlist-read-private',
-	'user-library-read'
+	'playlist-read-collaborative',
+	'playlist-modify-public',
+	'playlist-modify-private',
+	'user-library-read',
+	'user-library-modify'
 ].join(' ');
 let spotifyOAuthAttempt = null;
 const COOKIE_FILE_PATH = path.join(APP_DATA_DIR, 'youtube_cookies.txt');
@@ -98,6 +104,38 @@ function readPrivateJson(filePath, fallback) {
 
 function writePrivateJson(filePath, value) {
 	fs.writeFileSync(filePath, JSON.stringify(value, null, 2), { mode: 0o600 });
+}
+
+function betterLyricsTokenState() {
+	const envToken = String(process.env.BETTERLYRICS_TOKEN || '').trim();
+	const saved = readPrivateJson(BETTERLYRICS_CONFIG_FILE, {});
+	const savedToken = String(saved.token || '').trim();
+	return {
+		token: envToken || savedToken,
+		source: envToken ? 'environment' : (savedToken ? 'mineradio' : 'none')
+	};
+}
+
+async function syncBetterLyricsUserEnvironment(token) {
+	if (process.platform === 'win32') {
+		if (token) await execFileAsync('reg.exe', ['ADD', 'HKCU\\Environment', '/v', 'BETTERLYRICS_TOKEN', '/t', 'REG_SZ', '/d', token, '/f'], { windowsHide: true });
+		else await execFileAsync('reg.exe', ['DELETE', 'HKCU\\Environment', '/v', 'BETTERLYRICS_TOKEN', '/f'], { windowsHide: true }).catch(() => {});
+		return 'windows-user-environment';
+	}
+	if (process.platform === 'darwin') {
+		if (token) await execFileAsync('launchctl', ['setenv', 'BETTERLYRICS_TOKEN', token]);
+		else await execFileAsync('launchctl', ['unsetenv', 'BETTERLYRICS_TOKEN']).catch(() => {});
+		return 'macos-launchctl';
+	}
+	const environmentDir = path.join(os.homedir(), '.config', 'environment.d');
+	const environmentFile = path.join(environmentDir, '90-mineradio-betterlyrics.conf');
+	if (token) {
+		fs.mkdirSync(environmentDir, { recursive: true, mode: 0o700 });
+		fs.writeFileSync(environmentFile, `BETTERLYRICS_TOKEN=${token}\n`, { mode: 0o600 });
+	} else if (fs.existsSync(environmentFile)) {
+		fs.unlinkSync(environmentFile);
+	}
+	return 'linux-environment.d';
 }
 
 function spotifyClientConfig() {
@@ -169,6 +207,37 @@ async function spotifyApi(pathname, options) {
 		throw error;
 	}
 	return payload;
+}
+
+async function readJsonRequest(req, maxBytes = 65536) {
+	let raw = '';
+	for await (const chunk of req) {
+		raw += chunk;
+		if (raw.length > maxBytes) {
+			const error = new Error('REQUEST_TOO_LARGE');
+			error.statusCode = 413;
+			throw error;
+		}
+	}
+	try { return JSON.parse(raw || '{}'); }
+	catch (_) {
+		const error = new Error('INVALID_JSON');
+		error.statusCode = 400;
+		throw error;
+	}
+}
+
+function spotifyItemUri(value, fallbackId) {
+	let uri = String(value || '').trim();
+	if (/^[A-Za-z0-9]{10,64}$/.test(uri)) uri = `spotify:track:${uri}`;
+	if (!uri && fallbackId) uri = `spotify:track:${String(fallbackId).trim()}`;
+	if (!/^spotify:(track|episode):[A-Za-z0-9]{10,64}$/.test(uri)) return '';
+	return uri;
+}
+
+function spotifyPlaylistId(value) {
+	const id = String(value || '').trim();
+	return /^[A-Za-z0-9]{10,64}$/.test(id) ? id : '';
 }
 
 function spotifyTrackToSong(track) {
@@ -509,13 +578,12 @@ async function handleGetUrl(id) {
 		cookieArg = `--cookies "${COOKIE_FILE_PATH}"`;
 	}
 
-	const args = `-f "ba/b/best" ${cookieArg} -g "https://music.youtube.com/watch?v=${id}"`;
-	const url = await runYtDlp(args);
-
-	if (!url) return { url: null, error: 'COULD_NOT_EXTRACT_URL' };
-
+	const args = `--socket-timeout 20 --retries 2 --dump-single-json --fragment-retries 2 -f "ba/b/best" ${cookieArg} "https://music.youtube.com/watch?v=${id}"`;
+	const urldata = await runYtDlp(args);
+	if (!urldata) return { url: null, error: 'COULD_NOT_EXTRACT_URL' };
+	const urll = JSON.parse(urldata);
 	return {
-		url: url.trim(),
+		url: urll.url,
 		playable: true,
 		provider: 'youtube',
 		level: 'standard',
@@ -949,17 +1017,121 @@ const server = http.createServer(async (req, res) => {
 				return sendJSON(res, { error: error.message, songs: [] }, error.statusCode || 500);
 			}
 		}
+		if (pn === '/api/spotify/library/contains') {
+			if (req.method !== 'GET') return sendJSON(res, { error: 'METHOD_NOT_ALLOWED' }, 405);
+			try {
+				const rawUris = String(url.searchParams.get('uris') || '').split(',').filter(Boolean).slice(0, 40);
+				const uris = rawUris.map((value) => spotifyItemUri(value, value)).filter(Boolean);
+				if (!uris.length) return sendJSON(res, { liked: {} });
+				const states = await spotifyApi(`/me/library/contains?${new URLSearchParams({ uris: uris.join(',') })}`);
+				const liked = {};
+				uris.forEach((uri, index) => { liked[uri.split(':').pop()] = !!(states && states[index]); });
+				return sendJSON(res, { liked });
+			} catch (error) {
+				return sendJSON(res, { error: error.message, liked: {} }, error.statusCode || 500);
+			}
+		}
+		if (pn === '/api/spotify/library') {
+			if (req.method !== 'PUT' && req.method !== 'DELETE') return sendJSON(res, { error: 'METHOD_NOT_ALLOWED' }, 405);
+			try {
+				const body = await readJsonRequest(req);
+				const uri = spotifyItemUri(body.uri, body.id);
+				if (!uri) return sendJSON(res, { error: 'INVALID_SPOTIFY_URI' }, 400);
+				await spotifyApi(`/me/library?${new URLSearchParams({ uris: uri })}`, { method: req.method });
+				return sendJSON(res, { success: true, saved: req.method === 'PUT', uri });
+			} catch (error) {
+				return sendJSON(res, { error: error.message }, error.statusCode || 500);
+			}
+		}
+		if (pn === '/api/spotify/playlists') {
+			try {
+				if (req.method === 'POST') {
+					const body = await readJsonRequest(req);
+					const name = String(body.name || '').trim().slice(0, 100);
+					if (!name) return sendJSON(res, { error: 'PLAYLIST_NAME_REQUIRED' }, 400);
+					const playlist = await spotifyApi('/me/playlists', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ name, public: false, description: 'Created with Mineradio' })
+					});
+					return sendJSON(res, { success: true, playlist });
+				}
+				if (req.method !== 'GET') return sendJSON(res, { error: 'METHOD_NOT_ALLOWED' }, 405);
+				const [profile, data] = await Promise.all([spotifyApi('/me'), spotifyApi('/me/playlists?limit=50')]);
+				const playlists = ((data && data.items) || []).map((playlist) => ({
+					id: playlist.id,
+					name: playlist.name || '',
+					cover: playlist.images && playlist.images[0] ? playlist.images[0].url : '',
+					trackCount: Number((playlist.items && playlist.items.total) || (playlist.tracks && playlist.tracks.total) || 0),
+					owner: playlist.owner && (playlist.owner.display_name || playlist.owner.id) || '',
+					canModify: !!(playlist.owner && playlist.owner.id === profile.id) || !!playlist.collaborative,
+					public: playlist.public !== false,
+					provider: 'spt'
+				}));
+				return sendJSON(res, { playlists });
+			} catch (error) {
+				return sendJSON(res, { error: error.message, playlists: [] }, error.statusCode || 500);
+			}
+		}
+		if (pn === '/api/spotify/playlist/items') {
+			if (req.method !== 'POST' && req.method !== 'DELETE') return sendJSON(res, { error: 'METHOD_NOT_ALLOWED' }, 405);
+			try {
+				const body = await readJsonRequest(req);
+				const playlistId = spotifyPlaylistId(body.playlistId || body.pid);
+				const uri = spotifyItemUri(body.uri, body.id);
+				if (!playlistId || !uri) return sendJSON(res, { error: 'INVALID_PLAYLIST_ITEM' }, 400);
+				const options = {
+					method: req.method,
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(req.method === 'POST' ? { uris: [uri] } : { items: [{ uri }] })
+				};
+				const result = await spotifyApi(`/playlists/${encodeURIComponent(playlistId)}/items`, options);
+				return sendJSON(res, { success: true, added: req.method === 'POST', snapshotId: result && result.snapshot_id || '' });
+			} catch (error) {
+				return sendJSON(res, { error: error.message }, error.statusCode || 500);
+			}
+		}
 		if (pn === '/api/spotify/queue') {
 			if (req.method !== 'GET') return sendJSON(res, { error: 'METHOD_NOT_ALLOWED' }, 405);
 			try {
-				const data = await spotifyApi('/me/player/currently-playing');
-				if (data && data.item) {
-					const trackQuery = data.item.name;
-					const trackAlbum = data.item.album.name;
-					const searchQuery = `album:\"${trackAlbum}\" track:\"${trackQuery}\"`;
-					const searchres = await spotifyApi(`/search?${new URLSearchParams({ q: searchQuery, type: 'track', limit: String(10) })}`);
-					const parsed = ((searchres.tracks && searchres.tracks.items) || []);
-					return sendJSON(res, { success: true, currently_playing: parsed[0], queue: parsed.slice(1) });
+				const data = await spotifyApi('/me/player/queue');
+				let processedQueue = [];
+				const currentPlaying = data && data.currently_playing || null;
+				if (data && Array.isArray(data.queue)) {
+					// Khởi tạo Set để lưu các ID đã xuất hiện, tránh trùng lặp
+					const seenTrackIds = new Set();
+					// Nếu muốn lọc bỏ luôn những bài trong hàng đợi trùng với bài đang phát:
+					if (currentPlaying && currentPlaying.id) {
+						seenTrackIds.add(currentPlaying.id);
+					}
+					// Loop qua mảng queue của Spotify và lọc các phần tử trùng
+					processedQueue = data.queue.filter(track => {
+						if (!track || !track.id) return false;
+						if (seenTrackIds.has(track.id)) {
+							// ID này đã xuất hiện rồi -> Loại bỏ (False)
+							return false;
+						} else {
+							// ID mới -> Thêm vào Set để track và giữ lại (True)
+							seenTrackIds.add(track.id);
+							return true;
+						}
+					});
+				}
+				if (processedQueue && processedQueue.length > 0) {
+					return sendJSON(res, {
+						currently_playing: currentPlaying,
+						queue: processedQueue
+					});
+				} else {
+					const data1 = await spotifyApi('/me/player/currently-playing');
+					if (data1 && data1.item) {
+						const trackQuery = data1.item.name;
+						const trackAlbum = data1.item.album.name;
+						const searchQuery = `album:\"${trackAlbum}\" track:\"${trackQuery}\"`;
+						const searchres = await spotifyApi(`/search?${new URLSearchParams({ q: searchQuery, type: 'track', limit: String(10) })}`);
+						const parsed = ((searchres.tracks && searchres.tracks.items) || []);
+						return sendJSON(res, { success: true, currently_playing: currentPlaying, queue: parsed.slice(1) });
+					}
 				}
 			} catch (error) {
 				return sendJSON(res, { error: error.message, currently_playing: null, queue: [] }, error.statusCode || 500);
@@ -1040,13 +1212,48 @@ const server = http.createServer(async (req, res) => {
 		return;
 	}
 	// ---------- Lyrics (BetterLyrics Search for Youtube Track) ----------
+	if (pn === '/api/blyric/config') {
+		if (!isLoopbackRequest) return sendJSON(res, { error: 'LOCAL_REQUEST_REQUIRED' }, 403);
+		if (req.method === 'GET') {
+			const state = betterLyricsTokenState();
+			return sendJSON(res, { configured: !!state.token, token: state.token, source: state.source });
+		}
+		if (req.method !== 'POST' && req.method !== 'DELETE') return sendJSON(res, { error: 'METHOD_NOT_ALLOWED' }, 405);
+		try {
+			const body = req.method === 'POST' ? await readJsonRequest(req, 8192) : {};
+			const token = req.method === 'DELETE' ? '' : String(body.token || '').trim();
+			if (token && (!/^[^\s\x00-\x1f]{8,4096}$/.test(token))) return sendJSON(res, { error: 'INVALID_BETTERLYRICS_TOKEN' }, 400);
+			if (token) {
+				process.env.BETTERLYRICS_TOKEN = token;
+				writePrivateJson(BETTERLYRICS_CONFIG_FILE, { token, updatedAt: new Date().toISOString() });
+			} else {
+				delete process.env.BETTERLYRICS_TOKEN;
+				if (fs.existsSync(BETTERLYRICS_CONFIG_FILE)) fs.unlinkSync(BETTERLYRICS_CONFIG_FILE);
+			}
+			let environmentTarget = '', environmentError = '';
+			try { environmentTarget = await syncBetterLyricsUserEnvironment(token); }
+			catch (error) { environmentError = error.message || 'ENVIRONMENT_UPDATE_FAILED'; }
+			return sendJSON(res, {
+				success: true,
+				configured: !!token,
+				source: token ? 'environment' : 'none',
+				environmentUpdated: !environmentError,
+				environmentTarget,
+				environmentError
+			});
+		} catch (error) {
+			return sendJSON(res, { error: error.message }, error.statusCode || 500);
+		}
+	}
 	if (pn == '/api/blyric') {
 		const id = url.searchParams.get('id');
 		if (!id) return sendJSON(res, { error: 'ID_REQUIRED' }, 404);
-		const token = url.searchParams.get('token') || process.env.BETTERLYRICS_TOKEN;
+		const token = url.searchParams.get('token') || betterLyricsTokenState().token;
 		console.log(`[BetterLyrics]: Searching for ${id}`)
 		if (!token) return sendJSON(res, { error: 'NO_BETTER_LYRICS_TOKEN' }, 401);
-		const response = await fetch(`https://lyrics.api.dacubeking.com/lyrics?videoId=${id}&token=${token}`)
+		const betterLyricsUrl = new URL('https://lyrics.api.dacubeking.com/lyrics');
+		betterLyricsUrl.search = new URLSearchParams({ videoId: id, token }).toString();
+		const response = await fetch(betterLyricsUrl)
 		if (response.ok) {
 			const data = await response.json();
 			if (!data?.musixmatchSyncedLyrics && !data?.lrclibSyncedLyrics && !data?.goLyricsApiTtml) return sendJSON(res,{ error: "NO_BETTER_LYRICS" },404); // tell the frontend to search regular lyrics
